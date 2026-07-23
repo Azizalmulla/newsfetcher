@@ -640,7 +640,7 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
         </header>
 
         {error ? <div className={styles.errorBanner}>{error}</div> : null}
-        {ingestActive ? (
+        {ingestActive && view === "coverage" ? (
           <div className={styles.updateNotice}>
             <Icon name="refresh" size={14} />
             New coverage is being added. You can continue reviewing stories.
@@ -948,10 +948,6 @@ function Insights({
   onOpen: (article: Article) => void;
 }) {
   const enriched = (data?.articles ?? []).filter((article) => article.ai_summary);
-  const priority = enriched.filter(
-    (article) => (article.ai_importance ?? 0) >= 0.7 || article.ai_sentiment === "negative",
-  );
-  const negative = enriched.filter((article) => article.ai_sentiment === "negative");
   const tones = enriched.reduce<Record<string, number>>((counts, article) => {
     const tone = article.ai_sentiment ?? "neutral";
     counts[tone] = (counts[tone] ?? 0) + 1;
@@ -964,107 +960,148 @@ function Insights({
     return counts;
   }, new Map());
   const topTopics = [...topicCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const ranked = [...enriched].sort((left, right) => {
+    const leftRisk =
+      (left.ai_importance ?? 0) + (left.ai_sentiment === "negative" ? 0.5 : 0);
+    const rightRisk =
+      (right.ai_importance ?? 0) + (right.ai_sentiment === "negative" ? 0.5 : 0);
+    return rightRisk - leftRisk;
+  });
+  const selective = ranked.filter(
+    (article) => article.ai_sentiment === "negative" || (article.ai_importance ?? 0) >= 0.82,
+  );
+  const priority = (selective.length >= 3 ? selective : ranked.slice(0, 3)).slice(0, 6);
+  const negativeCount = tones.negative ?? 0;
+  const toneTotal = Math.max(enriched.length, 1);
+  const tonePercentage = (tone: string) =>
+    Math.round(((tones[tone] ?? 0) / toneTotal) * 100);
+  const suggestedAction = (article: Article) => {
+    if (article.ai_sentiment === "negative") return "Review closely";
+    if ((article.ai_importance ?? 0) >= 0.88) return "Share internally";
+    return "Keep monitoring";
+  };
 
   return (
     <>
-      <section className={styles.metrics}>
-        <MetricCard
-          label="Stories understood"
-          value={data?.ai_status.deepseek.enriched_articles ?? enriched.length}
-          note="summarized in plain language"
-          icon="insights"
-        />
-        <MetricCard
-          label="Needs attention"
-          value={priority.length}
-          note="higher-priority stories shown here"
-          icon="alert"
-        />
-        <MetricCard
-          label="Negative coverage"
-          value={negative.length}
-          note="stories to review more closely"
-          icon="tone"
-        />
-        <MetricCard
-          label="Trending topics"
-          value={topTopics.length}
-          note="themes appearing across coverage"
-          icon="coverage"
-        />
-      </section>
-
-      <section className={styles.briefingPanel}>
-        <div className={styles.briefingIntro}>
-          <span className={styles.briefingIcon}>
-            <Icon name="insights" size={21} />
-          </span>
-          <div>
-            <p>Today’s media briefing</p>
-            <h2>What deserves your attention</h2>
+      <section className={styles.insightsHero}>
+        <article className={styles.dailyBriefing}>
+          <div className={styles.briefingTitle}>
             <span>
-              We reviewed {enriched.length} recent stories. {priority.length} stand out for a
-              closer look{negative.length ? `, including ${negative.length} with negative tone` : ""}.
+              <Icon name="insights" size={21} />
+            </span>
+            <div>
+              <p>Today’s briefing</p>
+              <h2>
+                {priority.length
+                  ? `${priority.length} stories deserve a closer look`
+                  : "No urgent issues in recent coverage"}
+              </h2>
+            </div>
+          </div>
+          <p className={styles.briefingCopy}>
+            We reviewed {data?.ai_status.deepseek.enriched_articles ?? enriched.length} recent
+            stories. The overall tone is {dominantTone}
+            {negativeCount
+              ? `, with ${negativeCount} ${negativeCount === 1 ? "story" : "stories"} carrying negative coverage.`
+              : ", with no negative stories requiring immediate attention."}
+          </p>
+          <div className={styles.topicSection}>
+            <span>Trending conversations</span>
+            <div className={styles.topicCloud}>
+              {topTopics.length ? (
+                topTopics.map(([topic, count]) => (
+                  <span key={topic}>
+                    {topic} <b>{count}</b>
+                  </span>
+                ))
+              ) : (
+                <span>Topics will appear as coverage develops</span>
+              )}
+            </div>
+          </div>
+        </article>
+
+        <article className={styles.reputationPulse}>
+          <div className={styles.pulseHeader}>
+            <div>
+              <p>Reputation pulse</p>
+              <h2>{toneLabel(dominantTone)}</h2>
+            </div>
+            <span className={styles.pulseTotal}>{enriched.length} stories</span>
+          </div>
+          <div className={styles.toneBar} aria-label="Coverage tone distribution">
+            <span
+              className={styles.tonePositive}
+              style={{ width: `${tonePercentage("positive")}%` }}
+            />
+            <span
+              className={styles.toneNeutral}
+              style={{ width: `${tonePercentage("neutral")}%` }}
+            />
+            <span
+              className={styles.toneMixed}
+              style={{ width: `${tonePercentage("mixed")}%` }}
+            />
+            <span
+              className={styles.toneNegative}
+              style={{ width: `${tonePercentage("negative")}%` }}
+            />
+          </div>
+          <div className={styles.toneLegend}>
+            <span>
+              <i className={styles.legendPositive} />
+              Positive <b>{tones.positive ?? 0}</b>
+            </span>
+            <span>
+              <i className={styles.legendNeutral} />
+              Neutral <b>{tones.neutral ?? 0}</b>
+            </span>
+            <span>
+              <i className={styles.legendMixed} />
+              Mixed <b>{tones.mixed ?? 0}</b>
+            </span>
+            <span>
+              <i className={styles.legendNegative} />
+              Negative <b>{negativeCount}</b>
             </span>
           </div>
-        </div>
-        <div className={styles.signalGrid}>
-          <article>
-            <span>
-              <Icon name="alert" size={16} />
-            </span>
-            <div>
-              <small>Reputation watch</small>
-              <strong>
-                {negative.length
-                  ? `${negative.length} negative ${negative.length === 1 ? "story" : "stories"}`
-                  : "No negative stories"}
-              </strong>
-              <p>Review tone and context before deciding whether action is needed.</p>
-            </div>
-          </article>
-          <article>
-            <span>
-              <Icon name="tone" size={16} />
-            </span>
-            <div>
-              <small>Overall tone</small>
-              <strong>{toneLabel(dominantTone)}</strong>
-              <p>The most common tone across the stories reviewed today.</p>
-            </div>
-          </article>
-          <article>
-            <span>
-              <Icon name="coverage" size={16} />
-            </span>
-            <div>
-              <small>Trending conversation</small>
-              <strong>{topTopics.slice(0, 3).map(([topic]) => topic).join(" · ") || "Building"}</strong>
-              <p>The themes appearing most often across recent reporting.</p>
-            </div>
-          </article>
-        </div>
+          <p>
+            {negativeCount
+              ? "Start with the negative stories below, then decide whether monitoring or a response is appropriate."
+              : "Coverage is stable. Continue monitoring the leading conversations."}
+          </p>
+        </article>
       </section>
 
-      <div className={styles.resultHeader}>
-        <h2>Stories worth your attention</h2>
-        <span>{priority.length} stories</span>
+      <div className={styles.priorityHeading}>
+        <div>
+          <span>Priority coverage</span>
+          <h2>Start with these stories</h2>
+        </div>
+        <p>Selected for impact, tone, and relevance—not every reviewed article.</p>
       </div>
       {priority.length ? (
-        <div className={styles.insightList}>
-          {priority.map((article) => (
-            <button type="button" onClick={() => onOpen(article)} key={article.id}>
-              <span
-                className={`${styles.insightSignal} ${
-                  article.ai_sentiment === "negative" ? styles.insightSignalNegative : ""
-                }`}
-              >
-                <Icon
-                  name={article.ai_sentiment === "negative" ? "alert" : "insights"}
-                  size={17}
-                />
-              </span>
-              <div>
+        <div className={styles.priorityGrid}>
+          {priority.map((article, index) => (
+            <button
+              className={index === 0 ? styles.priorityStoryFeatured : ""}
+              type="button"
+              onClick={() => onOpen(article)}
+              key={article.id}
+            >
+              <div className={styles.priorityVisual}>
+                <ArticleCover article={article} />
+                <span
+                  className={
+                    article.ai_sentiment === "negative"
+                      ? styles.negativeBadge
+                      : styles.priorityBadge
+                  }
+                >
+                  {article.ai_sentiment === "negative" ? "Reputation watch" : "Priority story"}
+                </span>
+              </div>
+              <div className={styles.priorityBody}>
                 <div className={styles.articleMeta}>
                   <span>{article.publisher_name_en}</span>
                   <span>·</span>
@@ -1084,8 +1121,13 @@ function Insights({
                 </div>
                 <h3 dir={article.language === "ar" ? "rtl" : "ltr"}>{article.title}</h3>
                 <p dir={article.language === "ar" ? "rtl" : "ltr"}>{article.ai_summary}</p>
+                <div className={styles.priorityFooter}>
+                  <span>
+                    Suggested next step: <b>{suggestedAction(article)}</b>
+                  </span>
+                  <Icon name="arrow" size={15} />
+                </div>
               </div>
-              <Icon name="arrow" size={16} />
             </button>
           ))}
         </div>
@@ -1094,8 +1136,8 @@ function Insights({
           <span className={styles.emptyIcon}>
             <Icon name="insights" size={22} />
           </span>
-          <h3>Your briefing is being prepared</h3>
-          <p>Important stories and themes will appear here as new coverage arrives.</p>
+          <h3>No priority stories right now</h3>
+          <p>Your briefing will highlight stories when closer attention is useful.</p>
         </div>
       )}
     </>
