@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const preferredRegion = "dxb1";
 
 const KUNA_HOST = "www.kuna.net.kw";
 const ALLOWED_PATHS = new Set(["/Default.aspx", "/ArticleDetails.aspx"]);
