@@ -30,7 +30,7 @@ const EN = {
   updatingCoverage: "Updating coverage",
   coverageCurrent: "Coverage is current",
   keepWorking: "You can keep working",
-  storiesAvailable: "stories available",
+  storiesAvailable: "recent stories",
   communicationsWorkspace: "Communications workspace",
   updating: "Updating…",
   updateCoverage: "Update coverage",
@@ -154,7 +154,7 @@ const AR: typeof EN = {
   updatingCoverage: "جاري تحديث التغطية",
   coverageCurrent: "التغطية محدثة",
   keepWorking: "يمكنك متابعة العمل",
-  storiesAvailable: "خبر متاح",
+  storiesAvailable: "خبر حديث",
   communicationsWorkspace: "مساحة عمل فريق الاتصال",
   updating: "جاري التحديث…",
   updateCoverage: "تحديث التغطية",
@@ -1022,7 +1022,7 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
               <small>
                 {ingestActive
                   ? ui.keepWorking
-                  : `${data?.stats.articles_total ?? 0} ${ui.storiesAvailable}`}
+                  : `${data?.stats.confirmed_in_lookback ?? 0} ${ui.storiesAvailable}`}
               </small>
             </div>
           </div>
