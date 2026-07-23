@@ -7,7 +7,8 @@ import styles from "./ProductDashboard.module.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-export type DashboardView = "overview" | "coverage" | "epaper" | "sources" | "ai";
+export type DashboardView = "coverage" | "epaper" | "insights";
+type CoverageMode = "recent" | "priority" | "saved";
 
 type Article = {
   id: string;
@@ -33,12 +34,6 @@ type Publisher = {
   name_en: string;
   name_ar: string;
   homepage_url: string;
-  channel_count: number;
-  article_stats: {
-    total?: number;
-    with_body?: number;
-    confirmed_in_lookback?: number;
-  };
 };
 
 type Edition = {
@@ -53,32 +48,6 @@ type Edition = {
   publisher_name_ar: string;
 };
 
-type IngestionJob = {
-  id: string;
-  status: string;
-  attempt_count: number;
-  error: string | null;
-  started_at: string | null;
-  finished_at: string | null;
-};
-
-type AIStatus = {
-  deepseek: {
-    configured: boolean;
-    model: string;
-    enriched_articles: number;
-  };
-  voyage: {
-    configured: boolean;
-    embedding_model: string;
-    rerank_model: string;
-    embedded_articles: number;
-  };
-  semantic_candidates: number;
-  pending_review: number;
-  index_coverage: number;
-};
-
 type DashboardData = {
   stats: {
     articles_total: number;
@@ -89,38 +58,31 @@ type DashboardData = {
   articles: Article[];
   publishers: Publisher[];
   epaper_editions: Edition[];
-  ingestion: IngestionJob | null;
-  ai_status: AIStatus;
+  ingestion: { status: string; error: string | null } | null;
+  ai_status: {
+    deepseek: { enriched_articles: number };
+  };
   generated_at: string;
 };
 
 type IconName =
-  | "overview"
   | "coverage"
   | "epaper"
-  | "sources"
-  | "ai"
+  | "insights"
   | "reports"
-  | "settings"
   | "refresh"
   | "search"
   | "external"
   | "check"
   | "clock"
   | "bookmark"
-  | "filter"
-  | "arrow";
+  | "arrow"
+  | "close"
+  | "alert"
+  | "tone";
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, ReactNode> = {
-    overview: (
-      <>
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </>
-    ),
     coverage: (
       <>
         <path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
@@ -133,13 +95,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         <path d="M14 2v5h5M9 12h7M9 16h7" />
       </>
     ),
-    sources: (
-      <>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5M16 8a6 6 0 0 1 0 8M8 16a6 6 0 0 1 0-8" />
-      </>
-    ),
-    ai: (
+    insights: (
       <>
         <path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Z" />
         <path d="m18 14 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14ZM5 13l.7 2.3L8 16l-2.3.7L5 19l-.7-2.3L2 16l2.3-.7L5 13Z" />
@@ -149,12 +105,6 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
       <>
         <path d="M4 4h16v16H4z" />
         <path d="M8 15V9M12 15v-3M16 15V7" />
-      </>
-    ),
-    settings: (
-      <>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
       </>
     ),
     refresh: (
@@ -183,8 +133,20 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
       </>
     ),
     bookmark: <path d="M6 3h12v18l-6-4-6 4V3Z" />,
-    filter: <path d="M4 5h16M7 12h10M10 19h4" />,
     arrow: <path d="m9 18 6-6-6-6" />,
+    close: <path d="M6 6l12 12M18 6 6 18" />,
+    alert: (
+      <>
+        <path d="M12 3 2.8 20h18.4L12 3Z" />
+        <path d="M12 9v4M12 17h.01" />
+      </>
+    ),
+    tone: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
+      </>
+    ),
   };
   return (
     <svg
@@ -204,33 +166,23 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 }
 
 const NAV_ITEMS: Array<{ view: DashboardView; label: string; href: string; icon: IconName }> = [
-  { view: "overview", label: "Overview", href: "/", icon: "overview" },
-  { view: "coverage", label: "Coverage", href: "/coverage", icon: "coverage" },
+  { view: "coverage", label: "Coverage", href: "/", icon: "coverage" },
+  { view: "insights", label: "Insights", href: "/insights", icon: "insights" },
   { view: "epaper", label: "E-paper", href: "/epaper", icon: "epaper" },
-  { view: "sources", label: "Sources", href: "/sources", icon: "sources" },
-  { view: "ai", label: "AI Intelligence", href: "/ai", icon: "ai" },
 ];
 
 const VIEW_COPY: Record<DashboardView, { title: string; subtitle: string }> = {
-  overview: {
-    title: "Media overview",
-    subtitle: "The coverage, signals, and editions that matter today.",
-  },
   coverage: {
-    title: "Coverage inbox",
-    subtitle: "Search and review recent reporting across Kuwait.",
+    title: "Media coverage",
+    subtitle: "Review what is being said, understand what matters, and save key stories.",
+  },
+  insights: {
+    title: "Insights",
+    subtitle: "A clear view of the stories, themes, and reputational signals worth your attention.",
   },
   epaper: {
     title: "E-paper library",
-    subtitle: "Browse the latest newspaper editions and open original PDFs.",
-  },
-  sources: {
-    title: "News sources",
-    subtitle: "Coverage health and output across your monitored publications.",
-  },
-  ai: {
-    title: "AI Intelligence",
-    subtitle: "Semantic indexing, AI enrichment, and relevance review in one place.",
+    subtitle: "Browse recent newspaper editions and open the original publication.",
   },
 };
 
@@ -240,6 +192,55 @@ function formatDate(value: string | null, withTime = false) {
     dateStyle: "medium",
     ...(withTime ? { timeStyle: "short" as const } : {}),
   }).format(new Date(value));
+}
+
+function priorityLabel(article: Article) {
+  if ((article.ai_importance ?? 0) >= 0.7) return "High priority";
+  if ((article.ai_importance ?? 0) >= 0.45) return "Worth reviewing";
+  return "Standard coverage";
+}
+
+function toneLabel(value: string | null) {
+  const labels: Record<string, string> = {
+    positive: "Positive tone",
+    negative: "Negative tone",
+    mixed: "Mixed tone",
+    neutral: "Neutral tone",
+  };
+  return labels[value ?? "neutral"] ?? "Neutral tone";
+}
+
+function whyItMatters(article: Article) {
+  if (article.ai_sentiment === "negative") {
+    return "The tone may warrant a closer look from your communications team.";
+  }
+  if ((article.ai_importance ?? 0) >= 0.7) {
+    return "This story ranks among the higher-priority coverage in your current news cycle.";
+  }
+  return "This story provides useful context for understanding the current media conversation.";
+}
+
+function editionStatus(value: string) {
+  const labels: Record<string, string> = {
+    ocr_done: "Ready to search",
+    downloaded: "Available",
+    discovered: "New edition",
+    failed: "Unavailable",
+  };
+  return labels[value] ?? "Available";
+}
+
+function readStoredIds(key: string) {
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(key) ?? "[]");
+    return new Set(
+      Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string")
+        : [],
+    );
+  } catch {
+    return new Set<string>();
+  }
 }
 
 function ArticleCover({ article }: { article: Article }) {
@@ -263,74 +264,182 @@ function ArticleCover({ article }: { article: Article }) {
   );
 }
 
-function ArticleCard({ article }: { article: Article }) {
+function ArticleCard({
+  article,
+  saved,
+  reviewed,
+  onOpen,
+  onSave,
+}: {
+  article: Article;
+  saved: boolean;
+  reviewed: boolean;
+  onOpen: () => void;
+  onSave: () => void;
+}) {
   const summary = article.ai_summary || article.snippet;
+  const needsAttention =
+    (article.ai_importance ?? 0) >= 0.7 || article.ai_sentiment === "negative";
   return (
     <article className={styles.articleCard}>
-      <a className={styles.coverLink} href={article.url} target="_blank" rel="noreferrer">
+      <button className={styles.coverButton} type="button" onClick={onOpen}>
         <ArticleCover article={article} />
         <span className={styles.sourceChip}>{article.publisher_name_en}</span>
-        {article.ai_importance !== null && article.ai_importance >= 0.7 ? (
-          <span className={styles.priorityChip}>Priority</span>
-        ) : null}
-      </a>
+        {needsAttention ? <span className={styles.priorityChip}>Needs attention</span> : null}
+      </button>
       <div className={styles.articleBody}>
         <div className={styles.articleMeta}>
           <span>{formatDate(article.published_at)}</span>
           <span>·</span>
-          <span>{article.language.toUpperCase()}</span>
-          {article.ai_model ? (
+          <span>{toneLabel(article.ai_sentiment)}</span>
+          {reviewed ? (
             <>
               <span>·</span>
-              <span className={styles.aiLabel}>AI reviewed</span>
+              <span className={styles.reviewedLabel}>Reviewed</span>
             </>
           ) : null}
         </div>
-        <a
+        <button
           className={styles.articleTitle}
-          href={article.url}
-          target="_blank"
-          rel="noreferrer"
+          type="button"
+          onClick={onOpen}
           dir={article.language === "ar" ? "rtl" : "ltr"}
         >
           {article.title}
-        </a>
+        </button>
         {summary ? (
           <p className={styles.articleSummary} dir={article.language === "ar" ? "rtl" : "ltr"}>
             {summary}
           </p>
         ) : null}
-        {article.ai_topics.length ? (
-          <div className={styles.topicRow}>
-            {article.ai_topics.slice(0, 3).map((topic) => (
-              <span key={topic}>{topic}</span>
-            ))}
-          </div>
-        ) : null}
         <div className={styles.cardFooter}>
-          <span className={styles.publisherArabic} dir="rtl">
-            {article.publisher_name_ar}
-          </span>
-          <a href={article.url} target="_blank" rel="noreferrer" aria-label="Open original article">
-            <Icon name="external" size={15} />
-          </a>
+          <button className={styles.reviewButton} type="button" onClick={onOpen}>
+            Review story <Icon name="arrow" size={13} />
+          </button>
+          <button
+            className={`${styles.saveButton} ${saved ? styles.saveButtonActive : ""}`}
+            type="button"
+            onClick={onSave}
+            aria-label={saved ? "Remove from saved stories" : "Save story"}
+          >
+            <Icon name="bookmark" size={15} />
+          </button>
         </div>
       </div>
     </article>
   );
 }
 
-function EmptyCoverage({ onSync }: { onSync: () => void }) {
+function StoryPanel({
+  article,
+  saved,
+  reviewed,
+  onClose,
+  onSave,
+  onReview,
+}: {
+  article: Article;
+  saved: boolean;
+  reviewed: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  onReview: () => void;
+}) {
+  const summary = article.ai_summary || article.snippet || "A summary is not available yet.";
+  return (
+    <div className={styles.drawerBackdrop} role="presentation" onMouseDown={onClose}>
+      <aside
+        className={styles.storyPanel}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Story details"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className={styles.drawerHeader}>
+          <div>
+            <span>{article.publisher_name_en}</span>
+            <small>{formatDate(article.published_at, true)}</small>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close story details">
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+        <div className={styles.drawerCover}>
+          <ArticleCover article={article} />
+        </div>
+        <div className={styles.drawerContent}>
+          <div className={styles.storyBadges}>
+            <span>{priorityLabel(article)}</span>
+            <span>{toneLabel(article.ai_sentiment)}</span>
+          </div>
+          <h2 dir={article.language === "ar" ? "rtl" : "ltr"}>{article.title}</h2>
+          <section>
+            <h3>Story summary</h3>
+            <p dir={article.language === "ar" ? "rtl" : "ltr"}>{summary}</p>
+          </section>
+          <section className={styles.whyPanel}>
+            <span>
+              <Icon name="insights" size={17} />
+            </span>
+            <div>
+              <h3>Why it may matter</h3>
+              <p>{whyItMatters(article)}</p>
+            </div>
+          </section>
+          {article.ai_topics.length ? (
+            <section>
+              <h3>Topics</h3>
+              <div className={styles.topicRow}>
+                {article.ai_topics.map((topic) => (
+                  <span key={topic}>{topic}</span>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+        <div className={styles.drawerActions}>
+          <button type="button" className={styles.primaryAction} onClick={onSave}>
+            <Icon name="bookmark" size={15} />
+            {saved ? "Saved" : "Save story"}
+          </button>
+          <button type="button" className={styles.secondaryAction} onClick={onReview}>
+            <Icon name="check" size={15} />
+            {reviewed ? "Reviewed" : "Mark reviewed"}
+          </button>
+          <a href={article.url} target="_blank" rel="noreferrer">
+            View original <Icon name="external" size={14} />
+          </a>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function EmptyCoverage({
+  mode,
+  onSync,
+}: {
+  mode: CoverageMode;
+  onSync: () => void;
+}) {
+  const copy =
+    mode === "saved"
+      ? ["No saved stories yet", "Save useful coverage to build a focused shortlist."]
+      : mode === "priority"
+        ? ["Nothing needs urgent attention", "Higher-priority coverage will appear here."]
+        : ["No coverage to show yet", "Update coverage to bring in the latest reporting."];
   return (
     <div className={styles.emptyState}>
       <span className={styles.emptyIcon}>
-        <Icon name="coverage" size={22} />
+        <Icon name={mode === "priority" ? "alert" : "coverage"} size={22} />
       </span>
-      <h3>No coverage to show yet</h3>
-      <p>Sync the latest five days to fill your workspace with current reporting.</p>
-      <button onClick={onSync} type="button" className={styles.primaryButton}>
-        Sync coverage
-      </button>
+      <h3>{copy[0]}</h3>
+      <p>{copy[1]}</p>
+      {mode === "recent" ? (
+        <button onClick={onSync} type="button" className={styles.primaryAction}>
+          Update coverage
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -342,17 +451,21 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
   const [query, setQuery] = useState("");
   const [publisher, setPublisher] = useState("all");
   const [language, setLanguage] = useState("all");
+  const [mode, setMode] = useState<CoverageMode>("recent");
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/api/v1/dashboard?limit=100`, {
         cache: "no-store",
       });
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) throw new Error("workspace_unavailable");
       setData((await response.json()) as DashboardData);
       setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load NewsFetcher");
+    } catch {
+      setError("We couldn’t load your workspace. Please try again in a moment.");
     }
   }, []);
 
@@ -362,15 +475,47 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
     return () => window.clearInterval(timer);
   }, [load]);
 
+  useEffect(() => {
+    setSavedIds(readStoredIds("newsfetcher:saved"));
+    setReviewedIds(readStoredIds("newsfetcher:reviewed"));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedArticle) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedArticle(null);
+    };
+    window.addEventListener("keydown", close);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", close);
+    };
+  }, [selectedArticle]);
+
+  function updateStoredSet(
+    key: "newsfetcher:saved" | "newsfetcher:reviewed",
+    current: Set<string>,
+    setCurrent: (value: Set<string>) => void,
+    articleId: string,
+  ) {
+    const next = new Set(current);
+    if (next.has(articleId)) next.delete(articleId);
+    else next.add(articleId);
+    setCurrent(next);
+    window.localStorage.setItem(key, JSON.stringify([...next]));
+  }
+
   async function syncCoverage() {
     setSyncing(true);
     setError(null);
     try {
       const response = await fetch(`${API_BASE}/api/v1/dashboard/ingest`, { method: "POST" });
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) throw new Error("sync_unavailable");
       await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to start synchronization");
+    } catch {
+      setError("We couldn’t start the update. Your existing coverage is still available.");
     } finally {
       setSyncing(false);
     }
@@ -389,9 +534,37 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
     });
   }, [data, language, publisher, query]);
 
+  const priorityIds = useMemo(
+    () =>
+      new Set(
+        (data?.articles ?? [])
+          .filter(
+            (article) =>
+              (article.ai_importance ?? 0) >= 0.7 || article.ai_sentiment === "negative",
+          )
+          .map((article) => article.id),
+      ),
+    [data],
+  );
+
+  const displayedArticles = filteredArticles.filter((article) => {
+    if (mode === "priority") return priorityIds.has(article.id);
+    if (mode === "saved") return savedIds.has(article.id);
+    return true;
+  });
+
   const ingestActive =
     data?.ingestion?.status === "queued" || data?.ingestion?.status === "running";
   const copy = VIEW_COPY[view];
+
+  const articleProps = (article: Article) => ({
+    article,
+    saved: savedIds.has(article.id),
+    reviewed: reviewedIds.has(article.id),
+    onOpen: () => setSelectedArticle(article),
+    onSave: () =>
+      updateStoredSet("newsfetcher:saved", savedIds, setSavedIds, article.id),
+  });
 
   return (
     <div className={styles.app}>
@@ -402,7 +575,6 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
           </span>
           <span>NewsFetcher</span>
         </Link>
-
         <nav className={styles.sidebarNav} aria-label="Workspace">
           <span className={styles.navLabel}>Workspace</span>
           {NAV_ITEMS.map((item) => (
@@ -425,18 +597,17 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
             <small>Soon</small>
           </span>
         </nav>
-
         <div className={styles.sidebarBottom}>
           <div className={styles.syncStatus}>
             <span
               className={`${styles.statusDot} ${ingestActive ? styles.statusDotBusy : ""}`}
             />
             <div>
-              <strong>{ingestActive ? "Sync in progress" : "Workspace live"}</strong>
+              <strong>{ingestActive ? "Updating coverage" : "Coverage is current"}</strong>
               <small>
-                {data?.ingestion?.status === "failed"
-                  ? "Last sync failed"
-                  : `${data?.stats.articles_total ?? 0} indexed articles`}
+                {ingestActive
+                  ? "You can keep working"
+                  : `${data?.stats.articles_total ?? 0} stories available`}
               </small>
             </div>
           </div>
@@ -444,7 +615,7 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
             <span>NF</span>
             <div>
               <strong>Kuwait Media Desk</strong>
-              <small>Public workspace</small>
+              <small>Communications workspace</small>
             </div>
           </div>
         </div>
@@ -464,37 +635,72 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
             disabled={syncing || ingestActive}
           >
             <Icon name="refresh" size={15} />
-            {syncing ? "Starting…" : ingestActive ? "Syncing…" : "Sync latest news"}
+            {syncing || ingestActive ? "Updating…" : "Update coverage"}
           </button>
         </header>
 
         {error ? <div className={styles.errorBanner}>{error}</div> : null}
-        {data?.ingestion?.status === "failed" ? (
-          <div className={styles.errorBanner}>
-            Latest synchronization failed: {data.ingestion.error ?? "Unknown worker error"}
+        {ingestActive ? (
+          <div className={styles.updateNotice}>
+            <Icon name="refresh" size={14} />
+            New coverage is being added. You can continue reviewing stories.
           </div>
         ) : null}
 
-        {view === "overview" ? (
-          <Overview data={data} articles={filteredArticles} onSync={() => void syncCoverage()} />
-        ) : null}
         {view === "coverage" ? (
           <Coverage
             data={data}
-            articles={filteredArticles}
+            articles={displayedArticles}
+            allFilteredCount={filteredArticles.length}
+            priorityCount={priorityIds.size}
+            savedCount={savedIds.size}
+            mode={mode}
             query={query}
             publisher={publisher}
             language={language}
+            setMode={setMode}
             setQuery={setQuery}
             setPublisher={setPublisher}
             setLanguage={setLanguage}
             onSync={() => void syncCoverage()}
+            articleProps={articleProps}
           />
         ) : null}
         {view === "epaper" ? <Epaper data={data} /> : null}
-        {view === "sources" ? <Sources data={data} /> : null}
-        {view === "ai" ? <AIIntelligence data={data} /> : null}
+        {view === "insights" ? (
+          <Insights
+            data={data}
+            savedIds={savedIds}
+            reviewedIds={reviewedIds}
+            onOpen={setSelectedArticle}
+          />
+        ) : null}
       </main>
+
+      {selectedArticle ? (
+        <StoryPanel
+          article={selectedArticle}
+          saved={savedIds.has(selectedArticle.id)}
+          reviewed={reviewedIds.has(selectedArticle.id)}
+          onClose={() => setSelectedArticle(null)}
+          onSave={() =>
+            updateStoredSet(
+              "newsfetcher:saved",
+              savedIds,
+              setSavedIds,
+              selectedArticle.id,
+            )
+          }
+          onReview={() =>
+            updateStoredSet(
+              "newsfetcher:reviewed",
+              reviewedIds,
+              setReviewedIds,
+              selectedArticle.id,
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 }
@@ -503,17 +709,15 @@ function MetricCard({
   label,
   value,
   note,
-  tone,
   icon,
 }: {
   label: string;
   value: number | string;
   note: string;
-  tone: "blue" | "purple" | "coral" | "sand";
   icon: IconName;
 }) {
   return (
-    <article className={`${styles.metricCard} ${styles[`metric_${tone}`]}`}>
+    <article className={styles.metricCard}>
       <div className={styles.metricTop}>
         <span>{label}</span>
         <span className={styles.metricIcon}>
@@ -526,132 +730,91 @@ function MetricCard({
   );
 }
 
-function Overview({
-  data,
-  articles,
-  onSync,
-}: {
-  data: DashboardData | null;
-  articles: Article[];
-  onSync: () => void;
-}) {
-  const ai = data?.ai_status;
-  return (
-    <>
-      <section className={styles.metrics}>
-        <MetricCard
-          label="Coverage inbox"
-          value={data?.stats.confirmed_in_lookback ?? "—"}
-          note="verified in the last 5 days"
-          tone="blue"
-          icon="coverage"
-        />
-        <MetricCard
-          label="Full-text articles"
-          value={data?.stats.articles_with_body ?? "—"}
-          note="ready for semantic search"
-          tone="purple"
-          icon="check"
-        />
-        <MetricCard
-          label="AI enriched"
-          value={ai?.deepseek.enriched_articles ?? "—"}
-          note={`using ${ai?.deepseek.model ?? "DeepSeek"}`}
-          tone="coral"
-          icon="ai"
-        />
-        <MetricCard
-          label="E-paper editions"
-          value={data?.epaper_editions.length ?? "—"}
-          note="latest PDFs and OCR"
-          tone="sand"
-          icon="epaper"
-        />
-      </section>
-
-      <section className={styles.sectionHeader}>
-        <div>
-          <h2>Latest coverage</h2>
-          <p>Recent reporting across your active sources.</p>
-        </div>
-        <Link href="/coverage">
-          View all <Icon name="arrow" size={14} />
-        </Link>
-      </section>
-
-      {!data ? (
-        <div className={styles.loadingGrid}>
-          {[0, 1, 2].map((item) => (
-            <div className={styles.loadingCard} key={item} />
-          ))}
-        </div>
-      ) : articles.length ? (
-        <div className={styles.articleGrid}>
-          {articles.slice(0, 6).map((article) => (
-            <ArticleCard article={article} key={article.id} />
-          ))}
-        </div>
-      ) : (
-        <EmptyCoverage onSync={onSync} />
-      )}
-    </>
-  );
-}
-
 function Coverage({
   data,
   articles,
+  allFilteredCount,
+  priorityCount,
+  savedCount,
+  mode,
   query,
   publisher,
   language,
+  setMode,
   setQuery,
   setPublisher,
   setLanguage,
   onSync,
+  articleProps,
 }: {
   data: DashboardData | null;
   articles: Article[];
+  allFilteredCount: number;
+  priorityCount: number;
+  savedCount: number;
+  mode: CoverageMode;
   query: string;
   publisher: string;
   language: string;
+  setMode: (value: CoverageMode) => void;
   setQuery: (value: string) => void;
   setPublisher: (value: string) => void;
   setLanguage: (value: string) => void;
   onSync: () => void;
+  articleProps: (article: Article) => {
+    article: Article;
+    saved: boolean;
+    reviewed: boolean;
+    onOpen: () => void;
+    onSave: () => void;
+  };
 }) {
   return (
     <>
       <section className={styles.metrics}>
         <MetricCard
-          label="All indexed"
-          value={data?.stats.articles_total ?? "—"}
-          note="across every active source"
-          tone="blue"
+          label="Recent coverage"
+          value={data?.stats.confirmed_in_lookback ?? "—"}
+          note="stories from the last five days"
           icon="coverage"
         />
         <MetricCard
-          label="Recent"
-          value={data?.stats.confirmed_in_lookback ?? "—"}
-          note="inside the current window"
-          tone="purple"
-          icon="clock"
+          label="Ready to review"
+          value={data?.stats.articles_with_body ?? "—"}
+          note="stories with complete details"
+          icon="check"
         />
         <MetricCard
-          label="AI reviewed"
-          value={data?.ai_status.deepseek.enriched_articles ?? "—"}
-          note="summarized and tagged"
-          tone="coral"
-          icon="ai"
+          label="Needs attention"
+          value={priorityCount}
+          note="higher-priority or negative coverage"
+          icon="alert"
         />
-        <MetricCard label="Saved" value="0" note="your shortlist" tone="sand" icon="bookmark" />
+        <MetricCard label="Saved stories" value={savedCount} note="your shortlist" icon="bookmark" />
       </section>
 
       <div className={styles.tabs}>
-        <button className={styles.tabActive} type="button">
-          Recent coverage <span>{articles.length}</span>
+        <button
+          className={mode === "recent" ? styles.tabActive : ""}
+          type="button"
+          onClick={() => setMode("recent")}
+        >
+          Recent <span>{allFilteredCount}</span>
         </button>
-        <button type="button">AI priority</button>
-        <button type="button">Saved</button>
+        <button
+          className={mode === "priority" ? styles.tabActive : ""}
+          type="button"
+          onClick={() => setMode("priority")}
+        >
+          Needs attention <span>{priorityCount}</span>
+        </button>
+        <button
+          className={mode === "saved" ? styles.tabActive : ""}
+          type="button"
+          onClick={() => setMode("saved")}
+        >
+          Saved <span>{savedCount}</span>
+        </button>
       </div>
 
       <section className={styles.filterPanel}>
@@ -664,7 +827,7 @@ function Coverage({
           />
         </label>
         <select value={publisher} onChange={(event) => setPublisher(event.target.value)}>
-          <option value="all">All sources</option>
+          <option value="all">All publications</option>
           {(data?.publishers ?? []).map((item) => (
             <option value={item.code} key={item.code}>
               {item.name_en}
@@ -676,62 +839,62 @@ function Coverage({
           <option value="ar">Arabic</option>
           <option value="en">English</option>
         </select>
-        <button type="button" className={styles.filterButton}>
-          <Icon name="filter" size={15} />
-          More filters
-        </button>
       </section>
 
       <div className={styles.resultHeader}>
-        <h2>Coverage results</h2>
-        <span>{articles.length} articles</span>
+        <h2>
+          {mode === "priority"
+            ? "Stories that need attention"
+            : mode === "saved"
+              ? "Your saved stories"
+              : "Latest stories"}
+        </h2>
+        <span>{articles.length} stories</span>
       </div>
 
       {!data ? (
         <div className={styles.loadingGrid}>
-          {[0, 1, 2].map((item) => (
+          {[0, 1, 2, 3].map((item) => (
             <div className={styles.loadingCard} key={item} />
           ))}
         </div>
       ) : articles.length ? (
-        <div className={styles.articleGrid}>
+        <div className={styles.coverageGrid}>
           {articles.map((article) => (
-            <ArticleCard article={article} key={article.id} />
+            <ArticleCard {...articleProps(article)} key={article.id} />
           ))}
         </div>
       ) : (
-        <EmptyCoverage onSync={onSync} />
+        <EmptyCoverage mode={mode} onSync={onSync} />
       )}
     </>
   );
 }
 
 function Epaper({ data }: { data: DashboardData | null }) {
+  const searchable = data?.epaper_editions.filter((item) => item.status === "ocr_done").length;
   return (
     <>
       <section className={styles.metrics}>
         <MetricCard
-          label="Available editions"
+          label="Recent editions"
           value={data?.epaper_editions.length ?? "—"}
-          note="in your digital library"
-          tone="blue"
+          note="available in your library"
           icon="epaper"
         />
         <MetricCard
-          label="OCR complete"
-          value={data?.epaper_editions.filter((item) => item.status === "ocr_done").length ?? "—"}
-          note="ready for text search"
-          tone="purple"
-          icon="check"
+          label="Ready to search"
+          value={searchable ?? "—"}
+          note="editions with searchable text"
+          icon="search"
         />
         <MetricCard
           label="Total pages"
           value={data?.epaper_editions.reduce((sum, item) => sum + item.page_count, 0) ?? "—"}
           note="across recent editions"
-          tone="coral"
           icon="coverage"
         />
-        <MetricCard label="Cuttings" value="0" note="ready for review" tone="sand" icon="bookmark" />
+        <MetricCard label="Saved cuttings" value="0" note="your selected clippings" icon="bookmark" />
       </section>
 
       <div className={styles.resultHeader}>
@@ -759,10 +922,10 @@ function Epaper({ data }: { data: DashboardData | null }) {
                 <h3>{edition.publisher_name_en}</h3>
                 <p>{formatDate(edition.edition_date)}</p>
               </div>
-              <span className={styles.readyBadge}>{edition.status.replaceAll("_", " ")}</span>
+              <span className={styles.readyBadge}>{editionStatus(edition.status)}</span>
               {edition.source_url ? (
                 <a href={edition.source_url} target="_blank" rel="noreferrer">
-                  Open original PDF <Icon name="external" size={14} />
+                  Open edition <Icon name="external" size={14} />
                 </a>
               ) : null}
             </div>
@@ -773,195 +936,166 @@ function Epaper({ data }: { data: DashboardData | null }) {
   );
 }
 
-function Sources({ data }: { data: DashboardData | null }) {
-  return (
-    <>
-      <section className={styles.metrics}>
-        <MetricCard
-          label="Active publishers"
-          value={data?.publishers.length ?? "—"}
-          note="monitored continuously"
-          tone="blue"
-          icon="sources"
-        />
-        <MetricCard
-          label="Recent coverage"
-          value={data?.stats.confirmed_in_lookback ?? "—"}
-          note="verified articles"
-          tone="purple"
-          icon="coverage"
-        />
-        <MetricCard
-          label="Full text"
-          value={data?.stats.articles_with_body ?? "—"}
-          note="successfully extracted"
-          tone="coral"
-          icon="check"
-        />
-        <MetricCard
-          label="Languages"
-          value="2"
-          note="Arabic and English"
-          tone="sand"
-          icon="reports"
-        />
-      </section>
-      <section className={styles.tablePanel}>
-        <div className={styles.tableHeader}>
-          <div>
-            <h2>Source performance</h2>
-            <p>Output and extraction coverage by publication.</p>
-          </div>
-          <span className={styles.liveTag}>All systems active</span>
-        </div>
-        <div className={styles.sourceTable}>
-          <div className={styles.sourceTableHead}>
-            <span>Publication</span>
-            <span>Channels</span>
-            <span>Indexed</span>
-            <span>Full text</span>
-            <span>Recent</span>
-            <span>Status</span>
-          </div>
-          {(data?.publishers ?? []).map((item) => (
-            <div className={styles.sourceTableRow} key={item.code}>
-              <span className={styles.sourceIdentity}>
-                <b>{item.code.slice(0, 2)}</b>
-                <span>
-                  <strong>{item.name_en}</strong>
-                  <small dir="rtl">{item.name_ar}</small>
-                </span>
-              </span>
-              <span>{item.channel_count}</span>
-              <span>{item.article_stats.total ?? 0}</span>
-              <span>{item.article_stats.with_body ?? 0}</span>
-              <span>{item.article_stats.confirmed_in_lookback ?? 0}</span>
-              <span className={styles.statusActive}>
-                <i /> Active
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-    </>
+function Insights({
+  data,
+  savedIds,
+  reviewedIds,
+  onOpen,
+}: {
+  data: DashboardData | null;
+  savedIds: Set<string>;
+  reviewedIds: Set<string>;
+  onOpen: (article: Article) => void;
+}) {
+  const enriched = (data?.articles ?? []).filter((article) => article.ai_summary);
+  const priority = enriched.filter(
+    (article) => (article.ai_importance ?? 0) >= 0.7 || article.ai_sentiment === "negative",
   );
-}
+  const negative = enriched.filter((article) => article.ai_sentiment === "negative");
+  const tones = enriched.reduce<Record<string, number>>((counts, article) => {
+    const tone = article.ai_sentiment ?? "neutral";
+    counts[tone] = (counts[tone] ?? 0) + 1;
+    return counts;
+  }, {});
+  const dominantTone =
+    Object.entries(tones).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "neutral";
+  const topicCounts = enriched.reduce<Map<string, number>>((counts, article) => {
+    article.ai_topics.forEach((topic) => counts.set(topic, (counts.get(topic) ?? 0) + 1));
+    return counts;
+  }, new Map());
+  const topTopics = [...topicCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-function AIIntelligence({ data }: { data: DashboardData | null }) {
-  const ai = data?.ai_status;
-  const enriched = (data?.articles ?? []).filter((article) => article.ai_model);
   return (
     <>
       <section className={styles.metrics}>
         <MetricCard
-          label="DeepSeek enriched"
-          value={ai?.deepseek.enriched_articles ?? "—"}
-          note={ai?.deepseek.model ?? "article intelligence"}
-          tone="blue"
-          icon="ai"
+          label="Stories understood"
+          value={data?.ai_status.deepseek.enriched_articles ?? enriched.length}
+          note="summarized in plain language"
+          icon="insights"
         />
         <MetricCard
-          label="Semantic index"
-          value={`${Math.round((ai?.index_coverage ?? 0) * 100)}%`}
-          note={`${ai?.voyage.embedded_articles ?? 0} Voyage embeddings`}
-          tone="purple"
+          label="Needs attention"
+          value={priority.length}
+          note="higher-priority stories shown here"
+          icon="alert"
+        />
+        <MetricCard
+          label="Negative coverage"
+          value={negative.length}
+          note="stories to review more closely"
+          icon="tone"
+        />
+        <MetricCard
+          label="Trending topics"
+          value={topTopics.length}
+          note="themes appearing across coverage"
           icon="coverage"
-        />
-        <MetricCard
-          label="Match candidates"
-          value={ai?.semantic_candidates ?? "—"}
-          note="semantic relevance signals"
-          tone="coral"
-          icon="sources"
-        />
-        <MetricCard
-          label="Needs review"
-          value={ai?.pending_review ?? "—"}
-          note="never auto-finalized"
-          tone="sand"
-          icon="clock"
         />
       </section>
 
-      <section className={styles.aiModelPanel}>
-        <div className={styles.aiModelHeader}>
-          <span className={styles.aiOrb}>
-            <Icon name="ai" size={22} />
+      <section className={styles.briefingPanel}>
+        <div className={styles.briefingIntro}>
+          <span className={styles.briefingIcon}>
+            <Icon name="insights" size={21} />
           </span>
           <div>
-            <p>Intelligence pipeline</p>
-            <h2>DeepSeek + Voyage</h2>
-            <span>Real enrichment, semantic retrieval, and explainable reranking.</span>
+            <p>Today’s media briefing</p>
+            <h2>What deserves your attention</h2>
+            <span>
+              We reviewed {enriched.length} recent stories. {priority.length} stand out for a
+              closer look{negative.length ? `, including ${negative.length} with negative tone` : ""}.
+            </span>
           </div>
-          <span className={styles.liveTag}>
-            <i /> {ai?.deepseek.configured && ai?.voyage.configured ? "Connected" : "Setup needed"}
-          </span>
         </div>
-        <div className={styles.pipelineSteps}>
-          <div>
-            <span>01</span>
-            <strong>Understand</strong>
-            <p>DeepSeek summarizes articles, identifies topics, sentiment, and priority.</p>
-          </div>
-          <Icon name="arrow" size={18} />
-          <div>
-            <span>02</span>
-            <strong>Retrieve</strong>
-            <p>Voyage embeddings find semantically related coverage beyond exact keywords.</p>
-          </div>
-          <Icon name="arrow" size={18} />
-          <div>
-            <span>03</span>
-            <strong>Rerank</strong>
-            <p>Voyage reranking and DeepSeek review explain ambiguous relevance.</p>
-          </div>
-          <Icon name="arrow" size={18} />
-          <div>
-            <span>04</span>
-            <strong>Review</strong>
-            <p>Uncertain matches remain in a human review queue—never silently finalized.</p>
-          </div>
+        <div className={styles.signalGrid}>
+          <article>
+            <span>
+              <Icon name="alert" size={16} />
+            </span>
+            <div>
+              <small>Reputation watch</small>
+              <strong>
+                {negative.length
+                  ? `${negative.length} negative ${negative.length === 1 ? "story" : "stories"}`
+                  : "No negative stories"}
+              </strong>
+              <p>Review tone and context before deciding whether action is needed.</p>
+            </div>
+          </article>
+          <article>
+            <span>
+              <Icon name="tone" size={16} />
+            </span>
+            <div>
+              <small>Overall tone</small>
+              <strong>{toneLabel(dominantTone)}</strong>
+              <p>The most common tone across the stories reviewed today.</p>
+            </div>
+          </article>
+          <article>
+            <span>
+              <Icon name="coverage" size={16} />
+            </span>
+            <div>
+              <small>Trending conversation</small>
+              <strong>{topTopics.slice(0, 3).map(([topic]) => topic).join(" · ") || "Building"}</strong>
+              <p>The themes appearing most often across recent reporting.</p>
+            </div>
+          </article>
         </div>
       </section>
 
       <div className={styles.resultHeader}>
-        <h2>Recent AI insights</h2>
-        <span>{enriched.length} shown</span>
+        <h2>Stories worth your attention</h2>
+        <span>{priority.length} stories</span>
       </div>
-      {enriched.length ? (
+      {priority.length ? (
         <div className={styles.insightList}>
-          {enriched.map((article) => (
-            <article key={article.id}>
-              <span className={styles.insightScore}>
-                {Math.round((article.ai_importance ?? 0.5) * 100)}
+          {priority.map((article) => (
+            <button type="button" onClick={() => onOpen(article)} key={article.id}>
+              <span
+                className={`${styles.insightSignal} ${
+                  article.ai_sentiment === "negative" ? styles.insightSignalNegative : ""
+                }`}
+              >
+                <Icon
+                  name={article.ai_sentiment === "negative" ? "alert" : "insights"}
+                  size={17}
+                />
               </span>
               <div>
                 <div className={styles.articleMeta}>
                   <span>{article.publisher_name_en}</span>
                   <span>·</span>
-                  <span>{article.ai_sentiment ?? "neutral"}</span>
+                  <span>{toneLabel(article.ai_sentiment)}</span>
+                  {savedIds.has(article.id) ? (
+                    <>
+                      <span>·</span>
+                      <span>Saved</span>
+                    </>
+                  ) : null}
+                  {reviewedIds.has(article.id) ? (
+                    <>
+                      <span>·</span>
+                      <span className={styles.reviewedLabel}>Reviewed</span>
+                    </>
+                  ) : null}
                 </div>
                 <h3 dir={article.language === "ar" ? "rtl" : "ltr"}>{article.title}</h3>
                 <p dir={article.language === "ar" ? "rtl" : "ltr"}>{article.ai_summary}</p>
-                <div className={styles.topicRow}>
-                  {article.ai_topics.map((topic) => (
-                    <span key={topic}>{topic}</span>
-                  ))}
-                </div>
               </div>
-              <a href={article.url} target="_blank" rel="noreferrer">
-                <Icon name="external" size={16} />
-              </a>
-            </article>
+              <Icon name="arrow" size={16} />
+            </button>
           ))}
         </div>
       ) : (
         <div className={styles.emptyState}>
           <span className={styles.emptyIcon}>
-            <Icon name="ai" size={22} />
+            <Icon name="insights" size={22} />
           </span>
-          <h3>AI enrichment is preparing</h3>
-          <p>DeepSeek summaries and topics will appear here as the worker processes coverage.</p>
+          <h3>Your briefing is being prepared</h3>
+          <p>Important stories and themes will appear here as new coverage arrives.</p>
         </div>
       )}
     </>

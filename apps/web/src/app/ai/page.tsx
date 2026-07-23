@@ -1,5 +1,5 @@
-import ProductDashboard from "../../components/ProductDashboard";
+import { redirect } from "next/navigation";
 
-export default function AIIntelligencePage() {
-  return <ProductDashboard view="ai" />;
+export default function LegacyAIPage() {
+  redirect("/insights");
 }

@@ -1,5 +1,5 @@
 import ProductDashboard from "../components/ProductDashboard";
 
-export default function OverviewPage() {
-  return <ProductDashboard view="overview" />;
+export default function CoverageHomePage() {
+  return <ProductDashboard view="coverage" />;
 }
