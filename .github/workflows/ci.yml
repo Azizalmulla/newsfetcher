@@ -63,6 +63,8 @@ jobs:
       - name: Inventory API smoke
         run: |
           uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           sleep 2
           curl -sf http://127.0.0.1:8000/health |
             python -c 'import json,sys; assert json.load(sys.stdin)["status"] == "ok"'
