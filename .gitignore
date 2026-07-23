@@ -39,6 +39,8 @@ out/
 
 # Local data / volumes
 data/
+!apps/api/app/data/
+!apps/api/app/data/**
 *.log
 coverage/
 .turbo/

@@ -1,0 +1,248 @@
+# Phase 8 — formal closure for every mandatory channel.
+# Disposition values: active | blocked | awaiting_licensing | temporarily_broken
+# Rules:
+#   - legal_gate remains pending unless an explicit legal decision is recorded elsewhere
+#   - connector.enabled remains false (no live scrape in Phase 8)
+#   - "active" means technically ready / connector implemented, still gated
+
+version: 1
+updated: "2026-07-22"
+channels:
+  - publisher: alanba
+    channel: web_ar
+    disposition: active
+    assessment_status: approved_for_rss
+    recommended_connector: rss
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      feed_urls:
+        - https://www.alanba.com.kw/rss/kuwait-news
+        - https://www.alanba.com.kw/rss/economy-news
+        - https://www.alanba.com.kw/rss/sport-news
+        - https://www.alanba.com.kw/rss/art-news
+        - https://www.alanba.com.kw/rss/arabic-international-news
+      max_urls: 200
+    recovery_plan: null
+    notes: Prefer live RSS section feeds over stale sitemaps. Legal gate pending.
+
+  - publisher: alanba
+    channel: epaper_ar
+    disposition: active
+    assessment_status: approved_for_public_api
+    recommended_connector: epaper
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      requires_license: false
+      download_enabled: false
+      listing_urls:
+        - https://www.alanba.com.kw/newspaper/
+      pdf_host: https://pdf.alanba.com.kw
+      pdf_url_template: "{host}/pdf/{yyyy}/{mm}/{dd-mm-yyyy}/{dd-mm-yyyy}.pdf"
+      edition_discovery: public_pdf_host
+    recovery_plan: null
+    notes: >
+      Public full-edition PDFs are available at pdf.alanba.com.kw using
+      /pdf/{yyyy}/{mm}/{dd-mm-yyyy}/{dd-mm-yyyy}.pdf. Ops enablement flips
+      download_enabled + legal_gate; closure apply keeps connector disabled.
+
+  - publisher: alqabas
+    channel: web_ar
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://www.alqabas.com/
+      parse_next_data: true
+      next_data_url_template: "{base}/article/{id}/{slug}"
+      path_regex: "^/article/\\d+"
+      max_urls: 100
+    recovery_plan: null
+    notes: Next.js homepage; discover via __NEXT_DATA__. Legal gate pending.
+
+  - publisher: alrai
+    channel: web_ar
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://www.alraimedia.com/
+      path_regex: "^/article/\\d+"
+      max_urls: 100
+    recovery_plan: null
+    notes: HTML /article/ listings. Legal gate pending.
+
+  - publisher: alwasat
+    channel: web_ar
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://www.alwasat.com.kw/
+      path_regex: "ArticleDetail\\.aspx\\?id=\\d+"
+      max_urls: 100
+    recovery_plan: null
+    notes: Homepage ArticleDetail.aspx links; sitemap dates are stale. Legal gate pending.
+
+  - publisher: arabtimes
+    channel: web_en
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://www.arabtimesonline.com/
+        - https://www.arabtimesonline.com/news/category/kuwait/
+      path_regex: "^/news/[^/]+/?$"
+      exclude_path_regex: "^/news/category/"
+      max_urls: 80
+    recovery_plan: null
+    notes: HTML /news/ listings. Legal gate pending.
+
+  - publisher: kuwaittimes
+    channel: web_en
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://kuwaittimes.com/
+      path_regex: "^/article/\\d+"
+      max_urls: 100
+    recovery_plan: null
+    notes: HTML /article/ listings. Legal gate pending.
+
+  - publisher: aljarida
+    channel: web_ar
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://www.aljarida.com/
+        - https://www.aljarida.com/articles/
+      link_selector: "a[href]"
+      allowed_path_prefixes:
+        - /articles/
+        - /article/
+      max_urls: 80
+    recovery_plan:
+      issue: No reliable sitemap; HTML listing may change selectors
+      workaround: Fixture-driven HTML discovery tests; re-probe monthly
+      owner: connectors
+      next_review: "2026-08-15"
+    notes: HTML connector configured. Legal gate pending.
+
+  - publisher: alseyassah
+    channel: web_ar
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://alseyassah.com/
+        - https://alseyassah.com/%D8%A7%D9%84%D9%85%D8%AD%D9%84%D9%8A%D8%A9/
+      allowed_hosts:
+        - alseyassah.com
+        - al-seyassah.com
+      path_regex: "^/article/\\d+"
+      max_urls: 100
+    recovery_plan:
+      issue: al-seyassah.com serves a dead directory index; live site is alseyassah.com
+      workaround: Use alseyassah.com section listings with /article/{id} paths
+      owner: connectors
+      next_review: "2026-08-15"
+    notes: HTML connector on alseyassah.com. Legal gate pending.
+
+  - publisher: alwatan
+    channel: web_ar
+    disposition: active
+    assessment_status: requires_browser
+    recommended_connector: browser
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://alwatan.kuwait.tt/
+      browser_enabled: true
+      browser_wait_ms: 4000
+      path_regex: "/\\d+|/article|/news|/Articles"
+      max_urls: 80
+    recovery_plan:
+      issue: Homepage is a JS cookie challenge; static HTTP returns noscript stub
+      workaround: Playwright browser connector after legal_gate approval
+      owner: connectors
+      next_review: "2026-08-15"
+    notes: Browser connector required. Legal gate pending.
+
+  - publisher: kuna
+    channel: web_ar
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://www.kuna.net.kw/
+        - https://www.kuna.net.kw/ArticleList.aspx
+      path_regex: "ArticleDetails?\\.aspx|ArticleDetail\\.aspx|ArticleID="
+      max_urls: 80
+      transport_fallback: urllib
+    recovery_plan:
+      issue: httpx fails on malformed Transfer-Encoding; urllib fallback works
+      workaround: Always use transport_fallback=urllib for KUNA
+      owner: connectors
+      next_review: "2026-08-15"
+    notes: HTML + urllib transport fallback. Legal gate pending.
+
+  - publisher: kuna
+    channel: web_en
+    disposition: active
+    assessment_status: approved_for_html_fetch
+    recommended_connector: html
+    connector_config:
+      phase: 8
+      ingestion_enabled: false
+      requires_legal_gate: true
+      listing_urls:
+        - https://www.kuna.net.kw/
+        - https://www.kuna.net.kw/ArticleList.aspx
+      path_regex: "ArticleDetails?\\.aspx|ArticleDetail\\.aspx|ArticleID="
+      max_urls: 80
+      transport_fallback: urllib
+    recovery_plan:
+      issue: Same Transfer-Encoding quirk as AR; old /www/www/en/ listing 404s
+      workaround: Shared ArticleList.aspx + urllib fallback
+      owner: connectors
+      next_review: "2026-08-15"
+    notes: HTML + urllib transport fallback. Legal gate pending.
