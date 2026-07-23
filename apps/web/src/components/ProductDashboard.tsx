@@ -1005,12 +1005,6 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
               ) : null}
             </Link>
           ))}
-          <span className={styles.navLabel}>{ui.output}</span>
-          <span className={styles.navItemDisabled}>
-            <Icon name="reports" size={17} />
-            <span>{ui.reports}</span>
-            <small>{ui.soon}</small>
-          </span>
         </nav>
         <div className={styles.sidebarBottom}>
           <div className={styles.syncStatus}>
