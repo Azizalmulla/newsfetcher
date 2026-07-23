@@ -40,9 +40,15 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    cors_origins = settings.cors_origin_list
+    # Demo UI is on Vercel; allow preview/production *.vercel.app without chasing URL typos.
+    allow_origin_regex = (
+        r"https://([a-z0-9-]+\.)?vercel\.app" if settings.demo_public_dashboard else None
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origin_list,
+        allow_origins=cors_origins or ["http://localhost:3000"],
+        allow_origin_regex=allow_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
