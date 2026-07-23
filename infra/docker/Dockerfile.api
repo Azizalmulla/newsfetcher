@@ -36,14 +36,17 @@ WORKDIR /workspace
 COPY packages/connectors /workspace/packages/connectors
 COPY apps/api /workspace/apps/api
 COPY docs/sources /workspace/docs/sources
+COPY infra/docker/start.sh /workspace/infra/docker/start.sh
 COPY infra/docker/start-api.sh /workspace/infra/docker/start-api.sh
 COPY infra/docker/start-worker.sh /workspace/infra/docker/start-worker.sh
 WORKDIR /workspace/apps/api
 
-RUN chmod +x /workspace/infra/docker/start-api.sh /workspace/infra/docker/start-worker.sh \
+RUN chmod +x /workspace/infra/docker/start.sh \
+    /workspace/infra/docker/start-api.sh \
+    /workspace/infra/docker/start-worker.sh \
     && uv sync --no-dev \
     && uv run playwright install chromium
 
 EXPOSE 8000
 
-CMD ["/bin/sh", "/workspace/infra/docker/start-api.sh"]
+CMD ["/bin/sh", "/workspace/infra/docker/start.sh"]

@@ -7,8 +7,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "infra/docker/Dockerfile.api"
 
 [deploy]
-startCommand = "/bin/sh /workspace/infra/docker/start-api.sh"
-healthcheckPath = "/health"
-healthcheckTimeout = 300
+startCommand = "/bin/sh /workspace/infra/docker/start.sh"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
