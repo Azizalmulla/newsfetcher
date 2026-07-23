@@ -40,6 +40,7 @@ QUEUE_NAMES = (
 celery_app.conf.update(
     task_default_queue="source.health",
     task_acks_late=True,
+    task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
     task_track_started=True,
     task_soft_time_limit=1800,

@@ -6,7 +6,7 @@ publisher:
 channel:
   code: web_en
   language: en
-  base_url: https://www.kuna.net.kw/ArticleSearchPage.aspx?language=en
+  base_url: https://www.kuna.net.kw/Default.aspx?language=en
 assessment:
   status: approved_for_html_fetch
   legal_gate: pending

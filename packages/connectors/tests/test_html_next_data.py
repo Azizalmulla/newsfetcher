@@ -9,7 +9,11 @@ class _FakeResponse:
         self.status_code = 200
         self.text = text
         self.content = text.encode("utf-8")
-        self.url = url
+        self._url = url
+
+    @property
+    def url(self) -> str:
+        raise RuntimeError("response.url should not be required for HTML discovery")
 
 
 class _FakeClient:

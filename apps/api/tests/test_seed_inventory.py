@@ -30,6 +30,8 @@ def test_kuna_has_separate_ar_and_en_channels() -> None:
     assert languages == {"ar", "en"}
     assert "web_ar" in codes
     assert "web_en" in codes
+    english = next(channel for channel in kuna["channels"] if channel["code"] == "web_en")
+    assert english["base_url"] == "https://www.kuna.net.kw/Default.aspx?language=en"
 
 
 def test_kuna_ingest_uses_live_language_specific_pages() -> None:

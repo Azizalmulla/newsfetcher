@@ -874,6 +874,11 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
   }, []);
 
   useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+  }, [locale]);
+
+  useEffect(() => {
     if (!selectedArticle) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -1533,9 +1538,8 @@ function Insights({
       </div>
       {priority.length ? (
         <div className={styles.priorityGrid}>
-          {priority.map((article, index) => (
+          {priority.map((article) => (
             <button
-              className={index === 0 ? styles.priorityStoryFeatured : ""}
               type="button"
               onClick={() => onOpen(article)}
               key={article.id}

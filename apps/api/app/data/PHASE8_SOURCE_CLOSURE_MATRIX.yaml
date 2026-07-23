@@ -213,9 +213,8 @@ channels:
       ingestion_enabled: false
       requires_legal_gate: true
       listing_urls:
-        - https://www.kuna.net.kw/
-        - https://www.kuna.net.kw/ArticleList.aspx
-      path_regex: "ArticleDetails?\\.aspx|ArticleDetail\\.aspx|ArticleID="
+        - https://www.kuna.net.kw/Default.aspx?language=ar
+      path_regex: "ArticleDetails\\.aspx\\?id=\\d+"
       max_urls: 80
       transport_fallback: urllib
     recovery_plan:
@@ -235,14 +234,13 @@ channels:
       ingestion_enabled: false
       requires_legal_gate: true
       listing_urls:
-        - https://www.kuna.net.kw/
-        - https://www.kuna.net.kw/ArticleList.aspx
-      path_regex: "ArticleDetails?\\.aspx|ArticleDetail\\.aspx|ArticleID="
+        - https://www.kuna.net.kw/Default.aspx?language=en
+      path_regex: "ArticleDetails\\.aspx\\?id=\\d+"
       max_urls: 80
       transport_fallback: urllib
     recovery_plan:
-      issue: Same Transfer-Encoding quirk as AR; old /www/www/en/ listing 404s
-      workaround: Shared ArticleList.aspx + urllib fallback
+      issue: Same Transfer-Encoding quirk as AR; legacy search and list pages fail
+      workaround: Language-specific Default.aspx + urllib fallback
       owner: connectors
       next_review: "2026-08-15"
     notes: HTML + urllib transport fallback. Legal gate pending.

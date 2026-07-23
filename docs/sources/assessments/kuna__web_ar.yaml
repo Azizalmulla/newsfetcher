@@ -6,7 +6,7 @@ publisher:
 channel:
   code: web_ar
   language: ar
-  base_url: https://www.kuna.net.kw
+  base_url: https://www.kuna.net.kw/Default.aspx?language=ar
 assessment:
   status: approved_for_html_fetch
   legal_gate: pending

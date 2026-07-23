@@ -154,7 +154,7 @@ MANDATORY_PUBLISHERS: list[PublisherSeed] = [
                 "code": "web_en",
                 "label": "KUNA English",
                 "language": "en",
-                "base_url": "https://www.kuna.net.kw/ArticleSearchPage.aspx?language=en",
+                "base_url": "https://www.kuna.net.kw/Default.aspx?language=en",
             },
         ],
     },

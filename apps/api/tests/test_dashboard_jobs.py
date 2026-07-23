@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from app.api.dashboard import _job_should_be_interrupted
 from app.models.enums import JobRunStatus
 from app.models.observability import JobRun
+from app.workers.celery_app import celery_app
 
 
 def _job(
@@ -51,3 +52,8 @@ def test_any_active_job_is_recovered_after_hard_timeout() -> None:
 def test_terminal_job_is_never_reconciled() -> None:
     job, now = _job(status=JobRunStatus.succeeded, age_minutes=90)
     assert not _job_should_be_interrupted(job, celery_state="SUCCESS", now=now)
+
+
+def test_worker_lost_tasks_are_requeued() -> None:
+    assert celery_app.conf.task_acks_late is True
+    assert celery_app.conf.task_reject_on_worker_lost is True

@@ -68,9 +68,9 @@ class HtmlConnector(SourceConnector):
                         errors.append(f"{listing_url} -> HTTP {response.status_code}")
                         continue
                     meta["pages_ok"].append(listing_url)  # type: ignore[index]
+                    listing_parts = urlparse(listing_url)
                     base_for_template = (
-                        f"{urlparse(str(response.url)).scheme}://"
-                        f"{urlparse(str(response.url)).netloc}"
+                        f"{listing_parts.scheme}://{listing_parts.netloc}"
                     )
 
                     if parse_next_data:
