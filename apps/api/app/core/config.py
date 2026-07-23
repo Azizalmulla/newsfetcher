@@ -1,7 +1,17 @@
 from functools import lru_cache
+from typing import Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _to_psycopg_url(url: str) -> str:
+    """Railway/Heroku style postgres:// → SQLAlchemy+psycopg3."""
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
+    if url.startswith("postgresql://") and "+psycopg" not in url.split("://", 1)[0]:
+        url = "postgresql+psycopg://" + url[len("postgresql://") :]
+    return url
 
 
 class Settings(BaseSettings):
@@ -73,9 +83,13 @@ class Settings(BaseSettings):
     semantic_min_rerank: float = 0.10
     # Per-tenant thresholds can override these later via DB.
 
-    llm_provider: str = ""
-    llm_model: str = ""
+    # DeepSeek V4 via OpenAI-compatible API (https://api-docs.deepseek.com/).
+    llm_provider: str = ""  # deepseek|...
+    llm_model: str = "deepseek-v4-flash"
     llm_api_key: str = ""
+    llm_base_url: str = "https://api.deepseek.com"
+    # disabled for bulk work; enabled/high for ambiguous review escalation
+    llm_thinking: str = "disabled"  # disabled|enabled
 
     # Logo recognition — local cascade by default; external only after cost approval.
     logo_provider: str = "local"  # local|external
@@ -93,6 +107,17 @@ class Settings(BaseSettings):
 
     secret_key: str = "change-me-in-production-use-openssl-rand-hex-32"
     access_token_expire_minutes: int = 30
+
+    @model_validator(mode="after")
+    def _normalize_hosted_urls(self) -> Self:
+        self.database_url = _to_psycopg_url(self.database_url)
+        # Railway usually injects REDIS_URL only; mirror into Celery if still default-ish.
+        if self.redis_url and self.redis_url != "redis://localhost:6379/0":
+            if self.celery_broker_url == "redis://localhost:6379/0":
+                self.celery_broker_url = self.redis_url
+            if self.celery_result_backend == "redis://localhost:6379/1":
+                self.celery_result_backend = self.redis_url
+        return self
 
     @property
     def cors_origin_list(self) -> list[str]:

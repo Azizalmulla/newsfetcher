@@ -1,0 +1,14 @@
+# Railway config for the NewsFetcher API web service.
+# Worker service: same Dockerfile, override start command in the dashboard to
+#   /bin/sh /workspace/infra/docker/start-worker.sh
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infra/docker/Dockerfile.api"
+
+[deploy]
+startCommand = "/bin/sh /workspace/infra/docker/start-api.sh"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
