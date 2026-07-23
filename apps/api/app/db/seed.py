@@ -126,9 +126,19 @@ def run_seed() -> dict[str, int]:
         roles_created = seed_roles(db)
         publishers_created, channels_created = seed_publishers(db)
         db.commit()
-        from app.services.source_closure import apply_source_closure
+        unclosed_channel = db.scalar(
+            select(SourceAssessment.id)
+            .where(SourceAssessment.phase8_disposition.is_(None))
+            .limit(1)
+        )
+        phase8_closed = 0
+        if channels_created or unclosed_channel is not None:
+            from app.services.source_closure import apply_source_closure
 
-        closure = apply_source_closure(db, actor_id="seed")
+            closure = apply_source_closure(db, actor_id="seed")
+            phase8_closed = int(closure["applied"])
+        else:
+            logger.info("Preserving existing source gates and connector enablement")
         from app.services.social import seed_outlet_accounts
 
         social_accounts = seed_outlet_accounts(db)
@@ -136,7 +146,7 @@ def run_seed() -> dict[str, int]:
             "roles_created": roles_created,
             "publishers_created": publishers_created,
             "channels_created": channels_created,
-            "phase8_closed": closure["applied"],
+            "phase8_closed": phase8_closed,
             "social_accounts_seeded": social_accounts,
         }
         logger.info("Seed complete: %s", result)
