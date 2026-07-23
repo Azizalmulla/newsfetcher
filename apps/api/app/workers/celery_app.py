@@ -42,6 +42,8 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_track_started=True,
+    task_soft_time_limit=1800,
+    task_time_limit=2100,
     broker_connection_retry_on_startup=True,
     imports=("app.workers.tasks",),
     task_routes={
@@ -52,6 +54,7 @@ celery_app.conf.update(
         "app.workers.tasks.fetch_article_bodies_task": {"queue": "article.fetch"},
         "app.workers.tasks.run_lookback_ingest_task": {"queue": "source.discovery"},
         "app.workers.tasks.run_public_lookback_ingest": {"queue": "source.discovery"},
+        "app.workers.tasks.enrich_recent_article_assets": {"queue": "matching.classify"},
         "app.workers.tasks.run_lexical_matching": {"queue": "matching.lexical"},
         "app.workers.tasks.run_semantic_matching": {"queue": "matching.semantic"},
         "app.workers.tasks.run_semantic_rerank": {"queue": "matching.rerank"},

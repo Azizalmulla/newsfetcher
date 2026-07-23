@@ -93,7 +93,10 @@ def test_apply_closure_closes_all_channels_without_enabling() -> None:
         epaper = db.scalar(
             select(SourceChannel)
             .where(SourceChannel.code == "epaper_ar")
-            .options(selectinload(SourceChannel.assessment), selectinload(SourceChannel.connector_config))
+            .options(
+                selectinload(SourceChannel.assessment),
+                selectinload(SourceChannel.connector_config),
+            )
         )
         assert epaper is not None
         assert epaper.assessment is not None

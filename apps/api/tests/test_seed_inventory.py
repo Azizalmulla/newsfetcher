@@ -11,7 +11,7 @@ def test_all_mandatory_homepages_present() -> None:
         "https://alqabas.com",
         "https://www.alraimedia.com",
         "https://www.aljarida.com",
-        "https://al-seyassah.com",
+        "https://alseyassah.com",
         "https://kuwaittimes.com",
         "https://www.arabtimesonline.com",
         "https://www.kuna.net.kw",

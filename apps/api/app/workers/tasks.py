@@ -14,7 +14,8 @@ from app.db.session import SessionLocal
 from app.models.enums import JobRunStatus
 from app.models.observability import JobRun
 from app.models.sources import SourceChannel
-from app.services.article_fetch import fetch_article_bodies
+from app.services.ai_enrichment import enrich_recent_articles as enrich_recent_articles_service
+from app.services.article_fetch import backfill_article_images, fetch_article_bodies
 from app.services.epaper import propose_cuttings_for_tenant
 from app.services.ingestion import discover_channel
 from app.services.ingestion_pipeline import discover_all_enabled, run_lookback_ingest
@@ -139,7 +140,8 @@ def run_public_lookback_ingest(
             fetch_limit=fetch_limit,
             actor_id="public-demo-worker",
             enable_first=True,
-            use_browser_fallback=True,
+            # Browser-only sources run separately; never let Playwright block the whole demo sync.
+            use_browser_fallback=False,
         )
         job = db.get(JobRun, job_uuid)
         if job is None:
@@ -149,6 +151,10 @@ def run_public_lookback_ingest(
         job.finished_at = datetime.now(UTC)
         job.error_message = None
         db.commit()
+        enrich_recent_article_assets.apply_async(
+            kwargs={"image_limit": fetch_limit, "llm_limit": min(fetch_limit, 80)},
+            queue="matching.classify",
+        )
         return dict(result)
     except Exception as exc:
         db.rollback()
@@ -159,6 +165,21 @@ def run_public_lookback_ingest(
             job.finished_at = datetime.now(UTC)
             db.commit()
         raise
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.workers.tasks.enrich_recent_article_assets")  # type: ignore[untyped-decorator]
+def enrich_recent_article_assets(
+    image_limit: int = 300,
+    llm_limit: int = 80,
+) -> dict[str, object]:
+    """Backfill real publisher covers, then add DeepSeek summaries and topics."""
+    db = SessionLocal()
+    try:
+        images = backfill_article_images(db, limit=image_limit)
+        intelligence = enrich_recent_articles_service(db, limit=llm_limit)
+        return {"images": images, "intelligence": intelligence}
     finally:
         db.close()
 

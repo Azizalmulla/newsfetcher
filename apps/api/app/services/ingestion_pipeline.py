@@ -138,7 +138,14 @@ def article_stats(db: Session, *, lookback_days: int = DEFAULT_LOOKBACK_DAYS) ->
                 "confirmed_in_lookback": confirmed_count,
                 "date_unknown_with_body": unknown_count,
             }
-            for code, total_count, body_count, dated_count, confirmed_count, unknown_count in by_publisher_rows
+            for (
+                code,
+                total_count,
+                body_count,
+                dated_count,
+                confirmed_count,
+                unknown_count,
+            ) in by_publisher_rows
         },
     }
 

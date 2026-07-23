@@ -8,7 +8,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from html import unescape
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from newsfetcher_connectors.politeness import PoliteHttpClient
@@ -16,7 +16,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.arabic import normalize_text
-from app.models.articles import Article, ArticleVersion
+from app.models.articles import Article, ArticleImage, ArticleVersion
 
 _META_DATE_KEYS = (
     "article:published_time",
@@ -88,6 +88,60 @@ def _html_or_text_to_plain(content: Any) -> str:
     if "<" in text or "&" in text:
         return BeautifulSoup(text, "lxml").get_text("\n", strip=True)
     return text
+
+
+def _image_value(value: Any) -> str | None:
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, list):
+        for item in value:
+            candidate = _image_value(item)
+            if candidate:
+                return candidate
+    if isinstance(value, dict):
+        for key in ("url", "contentUrl", "src", "sourceUrl"):
+            candidate = _image_value(value.get(key))
+            if candidate:
+                return candidate
+    return None
+
+
+def _extract_primary_image(html_text: str, *, page_url: str) -> str | None:
+    """Extract a publisher-provided article cover, preferring explicit social metadata."""
+    soup = BeautifulSoup(html_text, "lxml")
+    candidates: list[str] = []
+    meta_attrs: tuple[dict[str, Any], ...] = (
+        {"property": "og:image:secure_url"},
+        {"property": "og:image"},
+        {"name": "twitter:image"},
+        {"name": "twitter:image:src"},
+    )
+    for attrs in meta_attrs:
+        node = soup.find("meta", attrs=attrs)
+        if node and node.get("content"):
+            candidates.append(str(node["content"]))
+
+    image_link = soup.find("link", rel=lambda value: value and "image_src" in value)
+    if image_link and image_link.get("href"):
+        candidates.append(str(image_link["href"]))
+
+    for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        raw = script.string or script.get_text() or ""
+        try:
+            payload = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for item in _walk_json_ld(payload):
+            candidate = _image_value(item.get("image") or item.get("thumbnailUrl"))
+            if candidate:
+                candidates.append(candidate)
+
+    for raw in candidates:
+        absolute = urljoin(page_url, unescape(raw.strip()))
+        parsed = urlparse(absolute)
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            return absolute[:2048]
+    return None
 
 
 def is_junk_body(body: str | None) -> bool:
@@ -239,6 +293,12 @@ def extract_alqabas_api_article(
     return {
         "title": (result.get("title") or "").strip() or None,
         "body": body,
+        "image_url": _image_value(
+            result.get("image")
+            or result.get("mainImage")
+            or result.get("featuredImage")
+            or result.get("thumbnail")
+        ),
         "published_at": _parse_datetime(
             str(result.get("publishDate") or result.get("date") or "") or None
         ),
@@ -355,6 +415,7 @@ def _extract_page_published_at(soup: BeautifulSoup, html_text: str) -> datetime 
 
 def extract_article_content(html: bytes, *, url: str) -> dict[str, Any]:
     html_text = html.decode("utf-8", errors="ignore")
+    image_url = _extract_primary_image(html_text, page_url=url)
     next_data = _extract_next_data_article(html_text)
     article_info = _extract_embedded_article_info(html_text)
     json_ld = _extract_json_ld_article(html_text)
@@ -460,6 +521,7 @@ def extract_article_content(html: bytes, *, url: str) -> dict[str, Any]:
     return {
         "title": title,
         "body": body,
+        "image_url": image_url,
         "published_at": published_at,
         "char_count": len(body or ""),
         "paid_article": bool(next_data.get("paid_article")),
@@ -696,6 +758,25 @@ def fetch_article_bodies(
                     "date_unknown": published_at is None,
                 }
                 article.metadata_ = meta
+                image_url = parsed.get("image_url")
+                if image_url:
+                    image_url = urljoin(source_url, str(image_url).strip())[:2048]
+                    image_parts = urlparse(image_url)
+                    if image_parts.scheme not in {"http", "https"} or not image_parts.netloc:
+                        image_url = None
+                if image_url and not db.scalar(
+                    select(ArticleImage.id).where(
+                        ArticleImage.article_id == article.id,
+                        ArticleImage.source_url == image_url,
+                    )
+                ):
+                    db.add(
+                        ArticleImage(
+                            article_id=article.id,
+                            source_url=image_url,
+                            metadata_={"role": "cover", "origin": "publisher"},
+                        )
+                    )
                 max_ver = db.scalar(
                     select(func.max(ArticleVersion.version_number)).where(
                         ArticleVersion.article_id == article.id
@@ -737,6 +818,79 @@ def fetch_article_bodies(
         "skipped_overwrite": skipped_overwrite,
         "errors": errors[:30],
         "error_count": len(errors),
+    }
+
+
+def backfill_article_images(
+    db: Session,
+    *,
+    limit: int = 300,
+    politeness_delay_ms: int = 250,
+) -> dict[str, Any]:
+    """Populate publisher-provided cover URLs for previously fetched articles."""
+    has_image = select(ArticleImage.id).where(ArticleImage.article_id == Article.id).exists()
+    articles = list(
+        db.scalars(
+            select(Article)
+            .where(~has_image)
+            .order_by(Article.published_at.desc().nulls_last(), Article.discovered_at.desc())
+            .limit(limit)
+        ).all()
+    )
+    client = PoliteHttpClient(
+        user_agent=(
+            "NewsFetcherBot/0.1 (+https://newsfetcher.local; media-monitoring; "
+            "contact=ops@newsfetcher.local)"
+        ),
+        politeness_delay_ms=politeness_delay_ms,
+        max_requests_per_minute=90,
+        timeout_seconds=20.0,
+        transport_fallback="urllib",
+    )
+    added = 0
+    errors: list[str] = []
+    try:
+        for article in articles:
+            try:
+                source_url = unescape(article.source_url or "")
+                host = urlparse(source_url).netloc.lower().removeprefix("www.")
+                if host == "alqabas.com":
+                    article_id = alqabas_article_id(source_url)
+                    if not article_id:
+                        continue
+                    parsed = extract_alqabas_api_article(article_id, client)
+                else:
+                    response = client.get(source_url)
+                    if response.status_code >= 400:
+                        continue
+                    parsed = extract_article_content(response.content, url=source_url)
+                image_url = parsed.get("image_url")
+                if not image_url:
+                    continue
+                image_url = urljoin(source_url, str(image_url).strip())[:2048]
+                image_parts = urlparse(image_url)
+                if image_parts.scheme not in {"http", "https"} or not image_parts.netloc:
+                    continue
+                db.add(
+                    ArticleImage(
+                        article_id=article.id,
+                        source_url=image_url,
+                        metadata_={"role": "cover", "origin": "publisher", "backfilled": True},
+                    )
+                )
+                added += 1
+                if added % 20 == 0:
+                    db.commit()
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"{article.source_url} -> {exc}")
+        db.commit()
+    finally:
+        client.close()
+    return {
+        "candidates": len(articles),
+        "added": added,
+        "error_count": len(errors),
+        "errors": errors[:20],
     }
 
 

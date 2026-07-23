@@ -44,7 +44,14 @@ def normalize_url(url: str) -> str:
     keep: list[tuple[str, str]] = []
     for key, value in parse_qsl(parts.query, keep_blank_values=True):
         kl = key.lower()
-        if kl in {"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "yearquarter"}:
+        if kl in {
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_term",
+            "utm_content",
+            "yearquarter",
+        }:
             continue
         if kl in {"id", "language"}:
             keep.append((kl, value.lower() if kl == "language" else value))
@@ -187,8 +194,8 @@ def discover_channel(db: Session, channel_id: Any) -> dict[str, Any]:
                 download=True,
             )
             run.status = "succeeded" if epaper_result.get("ok") else "failed"
-            run.items_discovered = int(epaper_result.get("discovered") or 0)
-            run.items_fetched = int(epaper_result.get("ingested") or 0)
+            run.items_discovered = int(str(epaper_result.get("discovered") or 0))
+            run.items_fetched = int(str(epaper_result.get("ingested") or 0))
             run.finished_at = datetime.now(UTC)
             run.error_summary = None if epaper_result.get("ok") else str(
                 epaper_result.get("reason") or "epaper_ingest_failed"

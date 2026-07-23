@@ -28,8 +28,9 @@ from app.models.semantic import (
     TenantMatchThreshold,
 )
 from app.services.embeddings import cosine_similarity, get_embedding_provider
+from app.services.llm import get_llm_client
 from app.services.matching_engine import MatchTerm, match_document
-from app.services.relevance import classify_relevance
+from app.services.relevance import RelevanceResult, classify_relevance
 from app.services.rerank import get_rerank_provider
 
 
@@ -159,6 +160,7 @@ def run_semantic_matching_for_tenant(db: Session, *, tenant_id: UUID) -> dict[st
     min_cosine, min_rerank, min_classifier = _thresholds(db, tenant_id)
     embedder = get_embedding_provider(settings)
     reranker = get_rerank_provider(settings)
+    llm = get_llm_client(settings)
 
     entities = db.scalars(
         select(MonitoringEntity)
@@ -229,14 +231,40 @@ def run_semantic_matching_for_tenant(db: Session, *, tenant_id: UUID) -> dict[st
                 continue
             lexical_score = lexical.best_score if lexical else 0.0
 
-            decision = classify_relevance(
+            rules_decision = classify_relevance(
                 vector_similarity=sim,
                 rerank_score=rerank_score,
                 lexical_best_score=lexical_score,
                 min_classifier=min_classifier,
             )
-            if decision.label == "not_relevant":
+            if rules_decision.label == "not_relevant":
                 continue
+            decision = rules_decision
+            llm_assessment = None
+            llm_error = None
+            if rules_decision.label == "needs_review" and llm is not None:
+                try:
+                    llm_assessment = llm.assess_relevance(
+                        entity_query=query_text,
+                        article_title=article.title or "",
+                        article_body=article.body_original or "",
+                    )
+                    decision = RelevanceResult(
+                        label=llm_assessment.label,
+                        confidence=llm_assessment.confidence,
+                        reason=llm_assessment.reason,
+                        features={
+                            **rules_decision.features,
+                            "rules_label": rules_decision.label,
+                            "rules_confidence": rules_decision.confidence,
+                            "llm_provider": llm.name,
+                            "llm_model": llm.model,
+                        },
+                        schema_version="v1",
+                        prompt_version="deepseek_relevance_v1",
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    llm_error = str(exc)[:1000]
 
             provenance = {
                 "embedding_provider": embedder.name,
@@ -254,6 +282,12 @@ def run_semantic_matching_for_tenant(db: Session, *, tenant_id: UUID) -> dict[st
                     "reason": decision.reason,
                     "schema_version": decision.schema_version,
                     "prompt_version": decision.prompt_version,
+                },
+                "llm_review": {
+                    "provider": llm.name if llm_assessment and llm else None,
+                    "model": llm.model if llm_assessment and llm else None,
+                    "recommendation": llm_assessment.label if llm_assessment else None,
+                    "error": llm_error,
                 },
                 "note": "Semantic retrieval proposes review candidates; never auto-final.",
             }

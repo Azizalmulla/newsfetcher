@@ -43,6 +43,8 @@ data/
 !apps/api/app/data/**
 *.log
 coverage/
+!apps/web/src/app/coverage/
+!apps/web/src/app/coverage/**
 .turbo/
 
 # Test / temp artifacts

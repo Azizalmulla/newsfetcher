@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from app.services.article_fetch import (
@@ -31,6 +31,22 @@ def test_extract_article_content_reads_title_body_and_date() -> None:
     assert parsed["published_at"] is not None
     assert parsed["published_at"].year == 2026
     assert "sufficiently long paragraph" in parsed["body"]
+
+
+def test_extract_article_content_reads_square_card_cover() -> None:
+    html = b"""
+    <html><head>
+      <meta property="og:title" content="Image story" />
+      <meta property="og:image" content="/media/story-cover.jpg" />
+    </head><body>
+      <article>
+        <p>This is a sufficiently long article body for validating the publisher cover image.</p>
+        <p>The second paragraph ensures this is accepted as meaningful article content.</p>
+      </article>
+    </body></html>
+    """
+    parsed = extract_article_content(html, url="https://publisher.test/news/story")
+    assert parsed["image_url"] == "https://publisher.test/media/story-cover.jpg"
 
 
 def test_extract_prefers_json_ld_article_body_over_sidebar_dom() -> None:
@@ -129,7 +145,9 @@ def test_extract_reads_wasat_lbl_date() -> None:
     html = """
     <html><body>
       <span id="ctl00_ContentPlaceHolder1_lblDate" class="small">22/07/2026 09:28</span>
-      <article><p>هذا نص مقال طويل بما يكفي لاعتباره محتوى صالحاً للتخزين في النظام هنا.</p></article>
+      <article><p>
+        هذا نص مقال طويل بما يكفي لاعتباره محتوى صالحاً للتخزين في النظام هنا.
+      </p></article>
     </body></html>
     """.encode()
     parsed = extract_article_content(html, url="https://www.alwasat.com.kw/ArticleDetail.aspx?id=1")
@@ -148,7 +166,9 @@ def test_extract_reads_watan_writer_link_date() -> None:
       <font class="WriterLink"></font>
       <font class="WriterLink">2026/07/20</font>
       <font class="WriterLink">05:10 م</font>
-      <div class="article-body"><p>محتوى الوطن بعد تجاوز جدار الكوكيز يجب أن يُستخرج كتاريخ نشر صحيح للمقال.</p></div>
+      <div class="article-body"><p>
+        محتوى الوطن بعد تجاوز جدار الكوكيز يجب أن يُستخرج كتاريخ نشر صحيح للمقال.
+      </p></div>
     </body></html>
     """.encode()
     parsed = extract_article_content(

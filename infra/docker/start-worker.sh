@@ -8,4 +8,5 @@ fi
 
 exec uv run celery -A app.workers.celery_app.celery_app worker \
   --loglevel=INFO \
-  -Q source.health,source.discovery,article.fetch,report.render,report.deliver,matching.lexical,matching.semantic,embedding.generate,matching.rerank
+  --concurrency="${CELERY_WORKER_CONCURRENCY:-2}" \
+  -Q source.health,source.discovery,article.fetch,report.render,report.deliver,matching.lexical,matching.semantic,embedding.generate,matching.rerank,matching.classify

@@ -14,7 +14,7 @@ from app.models.enums import ConnectorMethod, LegalGate
 from app.models.sources import Publisher, SourceChannel
 from app.services.audit import write_audit
 
-SKIP_CHANNELS = frozenset()
+SKIP_CHANNELS: frozenset[tuple[str, str]] = frozenset()
 DEFAULT_LOOKBACK_DAYS = 5
 DEFAULT_MAX_URLS = 100
 

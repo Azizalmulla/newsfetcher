@@ -8,9 +8,11 @@ from typing import Any
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from app.models.articles import Article
+from app.core.config import get_settings
+from app.models.articles import Article, ArticleImage
 from app.models.epaper import EpaperEdition
 from app.models.observability import JobRun
+from app.models.semantic import ArticleEmbedding, SemanticCandidate
 from app.models.sources import Publisher, SourceChannel
 from app.services.ingestion_pipeline import article_stats
 from app.services.source_enablement import DEFAULT_LOOKBACK_DAYS
@@ -35,6 +37,13 @@ def build_dashboard(
 ) -> dict[str, Any]:
     stats = article_stats(db, lookback_days=lookback_days)
     cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
+    cover_image = (
+        select(ArticleImage.source_url)
+        .where(ArticleImage.article_id == Article.id)
+        .order_by(ArticleImage.created_at.asc())
+        .limit(1)
+        .scalar_subquery()
+    )
 
     article_rows = db.execute(
         select(
@@ -44,7 +53,9 @@ def build_dashboard(
             Article.published_at,
             Article.language,
             Article.body_original,
+            Article.metadata_,
             Article.discovered_at,
+            cover_image.label("cover_image_url"),
             Publisher.code,
             Publisher.name_en,
             Publisher.name_ar,
@@ -54,8 +65,10 @@ def build_dashboard(
         .limit(limit)
     ).all()
 
-    articles = [
-        {
+    articles = []
+    for row in article_rows:
+        ai = (row.metadata_ or {}).get("ai") or {}
+        articles.append({
             "id": str(row.id),
             "title": row.title or "(untitled)",
             "url": row.canonical_url,
@@ -65,12 +78,16 @@ def build_dashboard(
             "has_body": bool(row.body_original),
             "in_lookback": bool(row.published_at and row.published_at >= cutoff),
             "snippet": _snippet(row.body_original),
+            "cover_image_url": row.cover_image_url,
+            "ai_summary": ai.get("summary"),
+            "ai_topics": ai.get("topics") or [],
+            "ai_sentiment": ai.get("sentiment"),
+            "ai_importance": ai.get("importance"),
+            "ai_model": ai.get("model"),
             "publisher_code": row.code,
             "publisher_name_en": row.name_en,
             "publisher_name_ar": row.name_ar,
-        }
-        for row in article_rows
-    ]
+        })
 
     publisher_rows = db.execute(
         select(
@@ -178,11 +195,55 @@ def build_dashboard(
             else None,
         }
 
+    settings = get_settings()
+    embedded_count = db.scalar(select(func.count()).select_from(ArticleEmbedding)) or 0
+    enriched_count = (
+        db.scalar(
+            select(func.count())
+            .select_from(Article)
+            .where(Article.metadata_.op("?")("ai"))
+        )
+        or 0
+    )
+    semantic_count = db.scalar(select(func.count()).select_from(SemanticCandidate)) or 0
+    pending_semantic = (
+        db.scalar(
+            select(func.count())
+            .select_from(SemanticCandidate)
+            .where(SemanticCandidate.status == "pending_review")
+        )
+        or 0
+    )
+    ai_status = {
+        "deepseek": {
+            "configured": bool(
+                settings.llm_provider == "deepseek" and settings.llm_api_key
+            ),
+            "model": settings.llm_model,
+            "enriched_articles": enriched_count,
+        },
+        "voyage": {
+            "configured": bool(
+                settings.embedding_provider == "voyage" and settings.voyage_api_key
+            ),
+            "embedding_model": settings.embedding_model,
+            "rerank_model": settings.rerank_model,
+            "embedded_articles": embedded_count,
+        },
+        "semantic_candidates": semantic_count,
+        "pending_review": pending_semantic,
+        "index_coverage": min(
+            1.0,
+            round(embedded_count / max(int(stats["articles_with_body"]), 1), 3),
+        ),
+    }
+
     return {
         "stats": stats,
         "articles": articles,
         "publishers": publishers,
         "epaper_editions": epaper_editions,
         "ingestion": ingestion,
+        "ai_status": ai_status,
         "generated_at": datetime.now(UTC).isoformat(),
     }
