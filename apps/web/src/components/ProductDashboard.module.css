@@ -36,16 +36,6 @@
   text-decoration: none;
 }
 
-.logoMark {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  color: #fff;
-  background: var(--brand);
-}
-
 .sidebarNav {
   display: flex;
   flex: 1;
@@ -542,6 +532,25 @@
   gap: 11px;
 }
 
+.loadMoreButton {
+  min-height: 42px;
+  display: block;
+  margin: 18px auto 0;
+  padding: 0 18px;
+  border: 1px solid #ccd8d2;
+  border-radius: 9px;
+  color: var(--brand);
+  background: #fff;
+  font-size: 0.68rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.loadMoreButton:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
 .articleCard {
   min-width: 0;
   display: grid;
@@ -586,24 +595,63 @@
 .coverFallback {
   width: 100%;
   height: 100%;
-  display: grid;
-  place-content: center;
-  gap: 6px;
-  color: #315b4f;
-  background: #dfece7;
-  text-align: center;
-}
-
-.coverFallback span {
-  font-size: 1.8rem;
-  font-weight: 820;
-  letter-spacing: -0.06em;
-  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 42px 15px 14px;
+  color: #202723;
+  background:
+    linear-gradient(rgba(35, 47, 41, 0.025) 1px, transparent 1px),
+    #f7f3e9;
+  background-size: 100% 5px;
+  text-align: start;
 }
 
 .coverFallback small {
-  font-size: 0.62rem;
-  font-weight: 700;
+  overflow: hidden;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coverFallbackRule {
+  width: 100%;
+  height: 3px;
+  display: block;
+  background: var(--brand);
+}
+
+.coverFallback strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.68rem, 1.2vw, 0.9rem);
+  line-height: 1.3;
+}
+
+.coverFallbackLines {
+  display: grid;
+  gap: 5px;
+  margin-top: auto;
+}
+
+.coverFallbackLines i {
+  height: 3px;
+  display: block;
+  background: #c9ccc5;
+}
+
+.coverFallbackLines i:nth-child(2) {
+  width: 84%;
+}
+
+.coverFallbackLines i:nth-child(3) {
+  width: 68%;
 }
 
 .sourceChip,
@@ -1453,37 +1501,54 @@
 @media (max-width: 850px) {
   .sidebar {
     width: 100%;
-    height: auto;
-    position: sticky;
-    inset: 0 0 auto;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
-    padding: 9px 12px;
+    height: calc(66px + env(safe-area-inset-bottom));
+    position: fixed;
+    inset: auto 0 0;
+    display: block;
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
     border-right: 0;
-    border-bottom: 1px solid #dce3df;
+    border-top: 1px solid #dce3df;
+    border-bottom: 0;
+    box-shadow: 0 -8px 24px rgba(25, 43, 35, 0.08);
   }
 
   .logo {
-    flex: 0 0 auto;
-    padding: 0;
-    font-size: 0;
+    display: none;
   }
 
   .sidebarNav {
-    min-width: 0;
-    overflow-x: auto;
+    width: min(100%, 420px);
+    height: 54px;
+    margin: 0 auto;
     flex-direction: row;
-    gap: 3px;
+    justify-content: center;
+    gap: 8px;
   }
 
   .navItem {
-    min-height: 36px;
-    flex: 0 0 auto;
-    padding: 0 9px;
+    min-height: 54px;
+    max-width: 180px;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 12px;
+    border-radius: 10px;
+    font-size: 0.61rem;
+    transition: none;
   }
 
   .navItem span:not(.navCount) {
+    display: block;
+  }
+
+  .navItemActive,
+  .navItemActive:hover {
+    color: var(--brand);
+    background: var(--brand-soft);
+  }
+
+  .navCount {
     display: none;
   }
 
@@ -1495,11 +1560,11 @@
 
   .main {
     margin-left: 0;
-    padding: 28px 18px 60px;
+    padding: 28px 18px calc(96px + env(safe-area-inset-bottom));
   }
 
   .app[dir="rtl"] .sidebar {
-    inset: 0 0 auto;
+    inset: auto 0 0;
     border-left: 0;
   }
 
@@ -1513,6 +1578,14 @@
 
   .insightsHero {
     grid-template-columns: 1fr;
+  }
+
+  .coverButton:hover .coverImage {
+    transform: none;
+  }
+
+  .drawerBackdrop {
+    backdrop-filter: none;
   }
 }
 

@@ -1,5 +1,5 @@
-import ProductDashboard from "../../components/ProductDashboard";
+import { redirect } from "next/navigation";
 
 export default function InsightsPage() {
-  return <ProductDashboard view="insights" />;
+  redirect("/");
 }

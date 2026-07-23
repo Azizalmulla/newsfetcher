@@ -62,6 +62,7 @@ def build_dashboard(
             Publisher.name_ar,
         )
         .join(Publisher, Publisher.id == Article.publisher_id)
+        .where(Article.published_at >= cutoff)
         .order_by(desc(Article.published_at).nulls_last(), desc(Article.discovered_at))
         .limit(limit)
     ).all()

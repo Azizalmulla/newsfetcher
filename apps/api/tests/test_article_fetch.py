@@ -49,6 +49,23 @@ def test_extract_article_content_reads_square_card_cover() -> None:
     assert parsed["image_url"] == "https://publisher.test/media/story-cover.jpg"
 
 
+def test_extract_article_content_reads_kuna_news_photo() -> None:
+    html = b"""
+    <html><body>
+      <img src="./NewsPictures/2026/7/23/photo.jpg" alt="KUNA news" />
+      <article>
+        <p>This is a sufficiently long KUNA article body used to validate image extraction.</p>
+        <p>The second paragraph ensures the body is accepted as meaningful article content.</p>
+      </article>
+    </body></html>
+    """
+    parsed = extract_article_content(
+        html,
+        url="https://www.kuna.net.kw/ArticleDetails.aspx?id=1&Language=en",
+    )
+    assert parsed["image_url"] == "https://www.kuna.net.kw/NewsPictures/2026/7/23/photo.jpg"
+
+
 def test_extract_prefers_json_ld_article_body_over_sidebar_dom() -> None:
     body = "أظهرت بيانات الهيئة العامة للمعلومات المدنية أن اسم محمد جاء في صدارة الأسماء " * 3
     ld = {
@@ -122,6 +139,7 @@ def test_extract_alqabas_api_article() -> None:
             "result": {
                 "title": "عنوان القبس",
                 "content": "<p>" + ("نص المقال الحقيقي هنا. " * 20) + "</p>",
+                "articleImage": "https://cdn.alqabas.com/article.jpg",
                 "publishDate": "2026-07-22T19:03:32.060Z",
                 "paidArticle": False,
             }
@@ -135,6 +153,7 @@ def test_extract_alqabas_api_article() -> None:
     parsed = extract_alqabas_api_article("5967707", client)
     assert parsed["title"] == "عنوان القبس"
     assert parsed["body_source"] == "alqabas_api"
+    assert parsed["image_url"] == "https://cdn.alqabas.com/article.jpg"
     assert "نص المقال الحقيقي" in parsed["body"]
     assert parsed["published_at"] is not None
     assert parsed["published_at"].year == 2026

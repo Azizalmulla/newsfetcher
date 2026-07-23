@@ -137,6 +137,10 @@ def _extract_primary_image(html_text: str, *, page_url: str) -> str | None:
             if candidate:
                 candidates.append(candidate)
 
+    for image in soup.select("img[src*='NewsPictures/'], img[src*='newspictures/']"):
+        if image.get("src"):
+            candidates.append(str(image["src"]))
+
     for raw in candidates:
         absolute = urljoin(page_url, unescape(raw.strip()))
         parsed = urlparse(absolute)
@@ -295,7 +299,8 @@ def extract_alqabas_api_article(
         "title": (result.get("title") or "").strip() or None,
         "body": body,
         "image_url": _image_value(
-            result.get("image")
+            result.get("articleImage")
+            or result.get("image")
             or result.get("mainImage")
             or result.get("featuredImage")
             or result.get("thumbnail")

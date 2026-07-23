@@ -82,7 +82,7 @@ def _reconcile_public_ingest(db: Session, job: JobRun | None) -> JobRun | None:
 @router.get("")
 def get_dashboard(
     lookback_days: int = Query(default=5, ge=1, le=30),
-    limit: int = Query(default=40, ge=1, le=100),
+    limit: int = Query(default=40, ge=1, le=600),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     _require_public_dashboard()

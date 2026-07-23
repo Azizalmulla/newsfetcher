@@ -90,6 +90,7 @@ const EN = {
   savedResults: "Your saved stories",
   latestStories: "Latest stories",
   stories: "stories",
+  loadMore: "Load more stories",
   recentEditions: "Recent editions",
   libraryHelp: "available in your library",
   readySearch: "Ready to search",
@@ -210,6 +211,7 @@ const AR: typeof EN = {
   savedResults: "أخبارك المحفوظة",
   latestStories: "أحدث الأخبار",
   stories: "خبر",
+  loadMore: "عرض المزيد من الأخبار",
   recentEditions: "أحدث الأعداد",
   libraryHelp: "متاحة في مكتبتك",
   readySearch: "جاهزة للبحث",
@@ -420,7 +422,6 @@ const NAV_ITEMS: Array<{
   icon: IconName;
 }> = [
   { view: "coverage", label: "coverage", href: "/", icon: "coverage" },
-  { view: "insights", label: "insights", href: "/insights", icon: "insights" },
   { view: "epaper", label: "epaper", href: "/epaper", icon: "epaper" },
 ];
 
@@ -562,9 +563,20 @@ function ArticleCover({ article, locale }: { article: Article; locale: Locale })
   const [failed, setFailed] = useState(false);
   if (!article.cover_image_url || failed) {
     return (
-      <div className={styles.coverFallback}>
-        <span>{article.publisher_code.slice(0, 2)}</span>
-        <small>{locale === "ar" ? article.publisher_name_ar : article.publisher_name_en}</small>
+      <div
+        className={styles.coverFallback}
+        dir={article.language === "ar" ? "rtl" : "ltr"}
+      >
+        <small>
+          {locale === "ar" ? article.publisher_name_ar : article.publisher_name_en}
+        </small>
+        <i className={styles.coverFallbackRule} />
+        <strong>{article.title}</strong>
+        <span className={styles.coverFallbackLines}>
+          <i />
+          <i />
+          <i />
+        </span>
       </div>
     );
   }
@@ -836,11 +848,12 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
   const [focus, setFocus] = useState("");
   const [focusDraft, setFocusDraft] = useState("");
+  const [visibleCount, setVisibleCount] = useState(24);
   const ui = locale === "ar" ? AR : EN;
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/v1/dashboard?limit=100`, {
+      const response = await fetch(`${API_BASE}/api/v1/dashboard?limit=600`, {
         cache: "no-store",
       });
       if (!response.ok) throw new Error("workspace_unavailable");
@@ -853,8 +866,6 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 20_000);
-    return () => window.clearInterval(timer);
   }, [load]);
 
   useEffect(() => {
@@ -949,7 +960,18 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
 
   const ingestActive =
     data?.ingestion?.status === "queued" || data?.ingestion?.status === "running";
+  const visibleArticles = displayedArticles.slice(0, visibleCount);
   const copy = VIEW_COPY[view];
+
+  useEffect(() => {
+    if (!ingestActive) return;
+    const timer = window.setInterval(() => void load(), 8_000);
+    return () => window.clearInterval(timer);
+  }, [ingestActive, load]);
+
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [focus, language, mode, publisher, query]);
 
   const articleProps = (article: Article) => ({
     article,
@@ -966,9 +988,6 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
     <div className={styles.app} dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
       <aside className={styles.sidebar}>
         <Link className={styles.logo} href="/">
-          <span className={styles.logoMark}>
-            <Icon name="coverage" size={17} />
-          </span>
           <span>NewsFetcher</span>
         </Link>
         <nav className={styles.sidebarNav} aria-label={ui.workspace}>
@@ -1088,7 +1107,9 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
         {view === "coverage" ? (
           <Coverage
             data={data}
-            articles={displayedArticles}
+            articles={visibleArticles}
+            resultCount={displayedArticles.length}
+            hasMore={visibleArticles.length < displayedArticles.length}
             allFilteredCount={filteredArticles.length}
             priorityCount={priorityIds.size}
             savedCount={savedIds.size}
@@ -1101,6 +1122,7 @@ export default function ProductDashboard({ view }: { view: DashboardView }) {
             setPublisher={setPublisher}
             setLanguage={setLanguage}
             onSync={() => void syncCoverage()}
+            onLoadMore={() => setVisibleCount((count) => count + 24)}
             articleProps={articleProps}
             ui={ui}
           />
@@ -1178,6 +1200,8 @@ function MetricCard({
 function Coverage({
   data,
   articles,
+  resultCount,
+  hasMore,
   allFilteredCount,
   priorityCount,
   savedCount,
@@ -1190,11 +1214,14 @@ function Coverage({
   setPublisher,
   setLanguage,
   onSync,
+  onLoadMore,
   articleProps,
   ui,
 }: {
   data: DashboardData | null;
   articles: Article[];
+  resultCount: number;
+  hasMore: boolean;
   allFilteredCount: number;
   priorityCount: number;
   savedCount: number;
@@ -1207,6 +1234,7 @@ function Coverage({
   setPublisher: (value: string) => void;
   setLanguage: (value: string) => void;
   onSync: () => void;
+  onLoadMore: () => void;
   ui: UIStrings;
   articleProps: (article: Article) => {
     article: Article;
@@ -1298,7 +1326,7 @@ function Coverage({
               ? ui.savedResults
               : ui.latestStories}
         </h2>
-        <span>{articles.length} {ui.stories}</span>
+        <span>{articles.length} / {resultCount} {ui.stories}</span>
       </div>
 
       {!data ? (
@@ -1316,6 +1344,11 @@ function Coverage({
       ) : (
         <EmptyCoverage mode={mode} ui={ui} onSync={onSync} />
       )}
+      {hasMore ? (
+        <button type="button" className={styles.loadMoreButton} onClick={onLoadMore}>
+          {ui.loadMore}
+        </button>
+      ) : null}
     </>
   );
 }
