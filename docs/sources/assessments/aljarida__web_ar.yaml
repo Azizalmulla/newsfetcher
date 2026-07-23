@@ -1,0 +1,23 @@
+publisher:
+  code: aljarida
+  name_en: Al Jarida
+  name_ar: الجريدة
+  homepage: https://www.aljarida.com
+channel:
+  code: web_ar
+  language: ar
+  base_url: https://www.aljarida.com
+assessment:
+  status: approved_for_html_fetch
+  legal_gate: pending
+  recommended_connector: html
+  robots_allows_fetch: 'yes'
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: false
+    urls: []
+  homepage_status: 200
+  errors: []
+  notes: Auto-generated technical probe. Not a legal approval.

@@ -1,0 +1,23 @@
+publisher:
+  code: alwatan
+  name_en: Al Watan
+  name_ar: الوطن
+  homepage: https://alwatan.kuwait.tt
+channel:
+  code: web_ar
+  language: ar
+  base_url: https://alwatan.kuwait.tt
+assessment:
+  status: approved_for_html_fetch
+  legal_gate: pending
+  recommended_connector: html
+  robots_allows_fetch: 'yes'
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: false
+    urls: []
+  homepage_status: 200
+  errors: []
+  notes: Auto-generated technical probe. Not a legal approval.

@@ -1,0 +1,88 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: newsfetcher
+          POSTGRES_USER: newsfetcher
+          POSTGRES_PASSWORD: newsfetcher_dev_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U newsfetcher -d newsfetcher"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    env:
+      DATABASE_URL: postgresql+psycopg://newsfetcher:newsfetcher_dev_password@localhost:5433/newsfetcher
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      SECRET_KEY: ci-secret-not-for-production
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Ruff
+        run: uv run ruff check .
+      - name: Mypy
+        run: uv run mypy app
+      - name: Migrate
+        run: uv run alembic upgrade head
+      - name: Seed
+        run: uv run python -m app.db.seed
+      - name: Pytest
+        run: uv run pytest -q
+      - name: Inventory API smoke
+        run: |
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          sleep 2
+          curl -sf http://127.0.0.1:8000/health | grep -q '"phase":"0"'
+          curl -sf http://127.0.0.1:8000/api/v1/sources/inventory | grep -q '"publisher_count":10'
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - name: Install
+        run: pnpm install
+      - name: Build
+        run: pnpm build

@@ -1,0 +1,31 @@
+publisher:
+  code: alanba
+  name_en: Al-Anbaa
+  name_ar: الأنباء
+  homepage: https://www.alanba.com.kw
+channel:
+  code: epaper_ar
+  language: ar
+  base_url: https://www.alanba.com.kw
+assessment:
+  status: approved_for_public_api
+  legal_gate: pending
+  recommended_connector: epaper
+  phase8_disposition: active
+  robots_allows_fetch: true
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: false
+    urls: []
+  epaper:
+    available: public
+    pdf_host: https://pdf.alanba.com.kw
+    listing_url: https://www.alanba.com.kw/newspaper/
+  homepage_status: null
+  errors: []
+  notes: >
+    Public full-edition PDFs confirmed at pdf.alanba.com.kw. Connector stays
+    disabled until explicit ops enablement approves legal_gate and download_enabled.
+  recovery_plan: null

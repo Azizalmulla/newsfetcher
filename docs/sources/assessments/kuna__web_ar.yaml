@@ -1,0 +1,25 @@
+publisher:
+  code: kuna
+  name_en: KUNA
+  name_ar: وكالة الأنباء الكويتية
+  homepage: https://www.kuna.net.kw
+channel:
+  code: web_ar
+  language: ar
+  base_url: https://www.kuna.net.kw
+assessment:
+  status: approved_for_html_fetch
+  legal_gate: pending
+  recommended_connector: html
+  robots_allows_fetch: unknown
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: false
+    urls: []
+  homepage_status: 200
+  errors:
+  - 'rss https://www.kuna.net.kw/feed: GET failed for https://www.kuna.net.kw/feed:
+    timed out; urllib fallback: timed out'
+  notes: Auto-generated technical probe. Not a legal approval.

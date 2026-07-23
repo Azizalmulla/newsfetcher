@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Sample Kuwait Feed</title>
+    <link>https://example.test/</link>
+    <item>
+      <title>First Story</title>
+      <link>https://example.test/articles/first-story</link>
+      <pubDate>Tue, 21 Jul 2026 10:00:00 GMT</pubDate>
+      <description>Summary one</description>
+    </item>
+    <item>
+      <title>Second Story</title>
+      <link>https://example.test/articles/second-story</link>
+      <pubDate>Tue, 21 Jul 2026 11:00:00 GMT</pubDate>
+      <description>Summary two</description>
+    </item>
+  </channel>
+</rss>

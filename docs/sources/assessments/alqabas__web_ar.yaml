@@ -1,0 +1,25 @@
+publisher:
+  code: alqabas
+  name_en: Al Qabas
+  name_ar: القبس
+  homepage: https://alqabas.com
+channel:
+  code: web_ar
+  language: ar
+  base_url: https://alqabas.com
+assessment:
+  status: approved_for_html_fetch
+  legal_gate: pending
+  recommended_connector: sitemap
+  robots_allows_fetch: 'yes'
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: true
+    urls:
+    - https://www.alqabas.com/sitemap.xml
+    - https://alqabas.com/sitemap.xml
+  homepage_status: 200
+  errors: []
+  notes: Auto-generated technical probe. Not a legal approval.

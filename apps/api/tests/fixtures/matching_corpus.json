@@ -1,0 +1,79 @@
+[
+  {
+    "id": "exact_en",
+    "title": "AI Octopus wins Kuwait automation contract",
+    "body": "The company AI Octopus signed the deal yesterday.",
+    "entity": {
+      "canonical_name_en": "AI Octopus",
+      "canonical_name_ar": "إيه آي أوكتوبس",
+      "aliases": [{"alias_text": "اي اي اوكتوبس", "language": "ar"}],
+      "exclusions": [{"phrase": "marine biology", "language": "en"}]
+    },
+    "expect_match": true,
+    "expect_types_any": ["exact", "case_insensitive_en"]
+  },
+  {
+    "id": "arabic_normalized",
+    "title": "خبر اقتصادي",
+    "body": "فازت شركة إيهْ آي أوكتوبس بالعقد الحكومي في الكويت.",
+    "entity": {
+      "canonical_name_en": "AI Octopus",
+      "canonical_name_ar": "ايه اي اوكتوبس",
+      "aliases": [],
+      "exclusions": []
+    },
+    "expect_match": true,
+    "expect_types_any": ["arabic_normalized", "exact", "alias"]
+  },
+  {
+    "id": "alias_ar",
+    "title": "تكنولوجيا",
+    "body": "أعلنت اي اي اوكتوبس عن توسع جديد.",
+    "entity": {
+      "canonical_name_en": "AI Octopus",
+      "canonical_name_ar": "إيه آي أوكتوبس",
+      "aliases": [{"alias_text": "اي اي اوكتوبس", "language": "ar"}],
+      "exclusions": []
+    },
+    "expect_match": true,
+    "expect_types_any": ["alias", "arabic_normalized"]
+  },
+  {
+    "id": "exclusion_veto",
+    "title": "Aquarium notes",
+    "body": "AI Octopus was discussed in a marine biology lecture about cephalopods.",
+    "entity": {
+      "canonical_name_en": "AI Octopus",
+      "canonical_name_ar": "إيه آي أوكتوبس",
+      "aliases": [],
+      "exclusions": [{"phrase": "marine biology", "language": "en"}]
+    },
+    "expect_match": false,
+    "expect_excluded": true
+  },
+  {
+    "id": "negative_unrelated",
+    "title": "Oil prices rise",
+    "body": "Kuwait crude benchmarks moved higher on Monday.",
+    "entity": {
+      "canonical_name_en": "AI Octopus",
+      "canonical_name_ar": "إيه آي أوكتوبس",
+      "aliases": [{"alias_text": "اي اي اوكتوبس", "language": "ar"}],
+      "exclusions": []
+    },
+    "expect_match": false
+  },
+  {
+    "id": "fuzzy_controlled",
+    "title": "Market",
+    "body": "Investors mentioned AI Octopu expansion plans in Kuwait.",
+    "entity": {
+      "canonical_name_en": "AI Octopus",
+      "canonical_name_ar": null,
+      "aliases": [],
+      "exclusions": []
+    },
+    "expect_match": true,
+    "expect_types_any": ["controlled_fuzzy"]
+  }
+]

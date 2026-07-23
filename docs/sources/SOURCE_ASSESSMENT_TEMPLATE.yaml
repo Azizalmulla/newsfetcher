@@ -1,0 +1,54 @@
+publisher:
+  id: ""
+  code: ""
+  name_en: ""
+  name_ar: ""
+  homepage: ""
+  country: KW
+  media_type: newspaper # newspaper|agency|portal
+
+channels:
+  - id: ""
+    code: ""
+    language: ar # ar|en
+    label: ""
+    base_url: ""
+
+assessment:
+  assessed_at: ""
+  assessor: ""
+  status: pending_assessment
+  # pending_assessment|approved_for_rss|approved_for_public_api|approved_for_html_fetch|
+  # requires_browser|requires_license|blocked_by_paywall|temporarily_broken|active|disabled
+  robots_txt:
+    url: ""
+    allows_fetch: unknown # unknown|yes|no|conditional
+    notes: ""
+  terms_of_service:
+    url: ""
+    commercial_reuse: unknown # unknown|allowed|restricted|prohibited
+    notes: ""
+  rss:
+    available: unknown # unknown|yes|no
+    feeds: []
+  public_api:
+    available: unknown
+    docs_url: ""
+  sitemap:
+    available: unknown
+    urls: []
+  archive_structure: ""
+  epaper:
+    available: unknown
+    access: unknown # public|subscription|unknown
+  auth_paywall:
+    status: unknown # none|soft|hard|unknown
+  languages: []
+  canonical_url_behavior: ""
+  rate_limits: ""
+  copyright_licensing_risk: unknown # low|medium|high|unknown
+  recommended_connector: pending
+  # licensed_api|rss|sitemap|html|browser|epaper|blocked|pending
+  legal_gate: pending # pending|approved|blocked
+  technical_notes: ""
+  next_action: ""

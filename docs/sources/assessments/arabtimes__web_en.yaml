@@ -1,0 +1,26 @@
+publisher:
+  code: arabtimes
+  name_en: Arab Times
+  name_ar: عرب تايمز
+  homepage: https://www.arabtimesonline.com
+channel:
+  code: web_en
+  language: en
+  base_url: https://www.arabtimesonline.com
+assessment:
+  status: approved_for_html_fetch
+  legal_gate: pending
+  recommended_connector: sitemap
+  robots_allows_fetch: 'yes'
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: true
+    urls:
+    - https://www.arabtimesonline.com/sitemaps/sitemap_0.xml
+    - https://www.arabtimesonline.com/sitemaps/newsSitemap.xml
+    - https://www.arabtimesonline.com/sitemap.xml
+  homepage_status: 200
+  errors: []
+  notes: Auto-generated technical probe. Not a legal approval.

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "notes": "Phase 9 logo eval seeds. False-positive cases must stay proposed until human review.",
+  "cases": [
+    {
+      "id": "exact_template_bytes",
+      "expect_proposed": true,
+      "expect_auto_included": false,
+      "description": "Same bytes as template should propose a match"
+    },
+    {
+      "id": "unrelated_noise",
+      "expect_proposed": false,
+      "expect_auto_included": false,
+      "description": "Unrelated image should be screened out or score below useful threshold"
+    },
+    {
+      "id": "false_logo_candidate",
+      "expect_proposed": true,
+      "expect_auto_included": false,
+      "description": "Weak similarity may propose but must never auto-include"
+    }
+  ]
+}

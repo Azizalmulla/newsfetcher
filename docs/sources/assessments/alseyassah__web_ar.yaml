@@ -1,0 +1,23 @@
+publisher:
+  code: alseyassah
+  name_en: Al Seyassah
+  name_ar: السياسة
+  homepage: https://al-seyassah.com
+channel:
+  code: web_ar
+  language: ar
+  base_url: https://al-seyassah.com
+assessment:
+  status: approved_for_html_fetch
+  legal_gate: pending
+  recommended_connector: html
+  robots_allows_fetch: unknown
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: false
+    urls: []
+  homepage_status: 200
+  errors: []
+  notes: Auto-generated technical probe. Not a legal approval.

@@ -1,0 +1,24 @@
+publisher:
+  code: alrai
+  name_en: Al Rai
+  name_ar: الراي
+  homepage: https://www.alraimedia.com
+channel:
+  code: web_ar
+  language: ar
+  base_url: https://www.alraimedia.com
+assessment:
+  status: approved_for_html_fetch
+  legal_gate: pending
+  recommended_connector: sitemap
+  robots_allows_fetch: 'yes'
+  rss:
+    available: false
+    feeds: []
+  sitemap:
+    available: true
+    urls:
+    - https://www.alraimedia.com/sitemaps/sitemap_0.xml
+  homepage_status: 200
+  errors: []
+  notes: Auto-generated technical probe. Not a legal approval.
