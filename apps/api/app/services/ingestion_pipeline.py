@@ -15,8 +15,12 @@ from app.services.ingestion import discover_channel
 from app.services.source_enablement import DEFAULT_LOOKBACK_DAYS, enable_web_sources
 
 
-def discover_all_enabled(db: Session) -> dict[str, Any]:
-    channels = db.scalars(
+def discover_all_enabled(
+    db: Session,
+    *,
+    excluded_publisher_codes: set[str] | None = None,
+) -> dict[str, Any]:
+    stmt = (
         select(SourceChannel)
         .join(
             SourceConnectorConfig,
@@ -29,7 +33,12 @@ def discover_all_enabled(db: Session) -> dict[str, Any]:
             selectinload(SourceChannel.connector_config),
         )
         .order_by(SourceChannel.code)
-    ).all()
+    )
+    if excluded_publisher_codes:
+        stmt = stmt.join(Publisher, Publisher.id == SourceChannel.publisher_id).where(
+            Publisher.code.not_in(excluded_publisher_codes)
+        )
+    channels = db.scalars(stmt).all()
 
     results: list[dict[str, Any]] = []
     ok_count = 0
@@ -159,6 +168,7 @@ def run_lookback_ingest(
     include_temporarily_broken: bool = True,
     enable_first: bool = True,
     use_browser_fallback: bool = True,
+    excluded_publisher_codes: set[str] | None = None,
 ) -> dict[str, Any]:
     enable_result = None
     if enable_first:
@@ -168,7 +178,10 @@ def run_lookback_ingest(
             actor_id=actor_id,
             include_temporarily_broken=include_temporarily_broken,
         )
-    discovery = discover_all_enabled(db)
+    discovery = discover_all_enabled(
+        db,
+        excluded_publisher_codes=excluded_publisher_codes,
+    )
     fetch = fetch_article_bodies(
         db,
         lookback_days=lookback_days,
@@ -177,6 +190,7 @@ def run_lookback_ingest(
         max_requests_per_minute=45,
         commit_every=20,
         use_browser_fallback=use_browser_fallback,
+        excluded_publisher_codes=excluded_publisher_codes,
     )
     stats = article_stats(db)
     write_audit(

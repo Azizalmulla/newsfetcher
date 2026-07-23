@@ -224,6 +224,39 @@
   font-size: 0.84rem;
 }
 
+.headerActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.localeToggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #d9e0dc;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.localeToggle button {
+  min-width: 39px;
+  height: 33px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  color: #68716c;
+  background: transparent;
+  font-size: 0.66rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.localeToggle .localeActive {
+  color: #fff;
+  background: var(--brand);
+}
+
 .syncButton,
 .primaryAction,
 .secondaryAction {
@@ -272,6 +305,87 @@
   border-color: #cddfd8;
   color: #3b5f53;
   background: #edf5f2;
+}
+
+.focusBar {
+  display: grid;
+  grid-template-columns: 36px minmax(190px, 1fr) minmax(360px, 0.9fr);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 13px;
+  border: 1px solid #dbe4df;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.focusIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.focusCopy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.focusCopy strong {
+  font-size: 0.73rem;
+}
+
+.focusCopy small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focusBar form {
+  display: flex;
+  gap: 6px;
+}
+
+.focusBar input {
+  min-width: 0;
+  min-height: 36px;
+  flex: 1;
+  padding: 0 10px;
+  border: 1px solid #d7dfda;
+  border-radius: 7px;
+  outline: 0;
+  color: var(--ink);
+  background: #fafbfa;
+  font-size: 0.65rem;
+}
+
+.focusBar input:focus {
+  border-color: #7da598;
+  box-shadow: 0 0 0 3px rgba(23, 79, 67, 0.08);
+}
+
+.focusBar button {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid #d6dfda;
+  border-radius: 7px;
+  color: #4f5b56;
+  background: #fff;
+  font-size: 0.63rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.focusBar button[type="submit"] {
+  border-color: var(--brand);
+  color: #fff;
+  background: var(--brand);
 }
 
 .metrics {
@@ -1252,6 +1366,48 @@
   text-decoration: none;
 }
 
+.app[dir="rtl"] {
+  font-family: "IBM Plex Sans Arabic", "Noto Sans Arabic", Inter, sans-serif;
+}
+
+.app[dir="rtl"] .sidebar {
+  inset: 0 0 0 auto;
+  border-right: 0;
+  border-left: 1px solid #dde3df;
+}
+
+.app[dir="rtl"] .main {
+  margin-right: 228px;
+  margin-left: 0;
+}
+
+.app[dir="rtl"] .navCount,
+.app[dir="rtl"] .navItemDisabled small,
+.app[dir="rtl"] .drawerActions > a {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+.app[dir="rtl"] .drawerBackdrop {
+  justify-content: flex-start;
+}
+
+.app[dir="rtl"] .storyPanel {
+  box-shadow: 18px 0 50px rgba(18, 37, 29, 0.13);
+  animation-name: slideInRtl;
+}
+
+.app[dir="rtl"] .pageHeader h1,
+.app[dir="rtl"] .priorityHeading h2,
+.app[dir="rtl"] .resultHeader h2 {
+  letter-spacing: 0;
+}
+
+.app[dir="rtl"] .reviewButton svg,
+.app[dir="rtl"] .priorityFooter svg {
+  transform: scaleX(-1);
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.5;
@@ -1261,6 +1417,13 @@
 @keyframes slideIn {
   from {
     transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInRtl {
+  from {
+    transform: translateX(-24px);
     opacity: 0;
   }
 }
@@ -1276,6 +1439,14 @@
 
   .editionGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .focusBar {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .focusBar form {
+    grid-column: 2;
   }
 }
 
@@ -1327,6 +1498,15 @@
     padding: 28px 18px 60px;
   }
 
+  .app[dir="rtl"] .sidebar {
+    inset: 0 0 auto;
+    border-left: 0;
+  }
+
+  .app[dir="rtl"] .main {
+    margin-right: 0;
+  }
+
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1342,8 +1522,25 @@
     flex-direction: column;
   }
 
-  .syncButton {
-    width: 100%;
+  .headerActions {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .headerActions .syncButton {
+    flex: 1;
+  }
+
+  .focusBar {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .focusBar form {
+    grid-column: 1 / -1;
+  }
+
+  .focusCopy small {
+    white-space: normal;
   }
 
   .filterPanel {

@@ -1,4 +1,5 @@
 from app.db.seed_data import MANDATORY_PUBLISHERS, expected_channel_count, inventory_summary
+from app.services.source_enablement import SOURCE_INGEST_OVERRIDES
 
 
 def test_exactly_ten_mandatory_publishers() -> None:
@@ -29,6 +30,17 @@ def test_kuna_has_separate_ar_and_en_channels() -> None:
     assert languages == {"ar", "en"}
     assert "web_ar" in codes
     assert "web_en" in codes
+
+
+def test_kuna_ingest_uses_live_language_specific_pages() -> None:
+    ar_config = SOURCE_INGEST_OVERRIDES[("kuna", "web_ar")]["config"]
+    en_config = SOURCE_INGEST_OVERRIDES[("kuna", "web_en")]["config"]
+    assert ar_config["listing_urls"] == [
+        "https://www.kuna.net.kw/Default.aspx?language=ar"
+    ]
+    assert en_config["listing_urls"] == [
+        "https://www.kuna.net.kw/Default.aspx?language=en"
+    ]
 
 
 def test_channel_count_matches_inventory_summary() -> None:

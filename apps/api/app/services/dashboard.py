@@ -48,6 +48,7 @@ def build_dashboard(
     article_rows = db.execute(
         select(
             Article.id,
+            Article.story_cluster_id,
             Article.title,
             Article.canonical_url,
             Article.published_at,
@@ -70,6 +71,9 @@ def build_dashboard(
         ai = (row.metadata_ or {}).get("ai") or {}
         articles.append({
             "id": str(row.id),
+            "story_cluster_id": (
+                str(row.story_cluster_id) if row.story_cluster_id else None
+            ),
             "title": row.title or "(untitled)",
             "url": row.canonical_url,
             "published_at": row.published_at.isoformat() if row.published_at else None,

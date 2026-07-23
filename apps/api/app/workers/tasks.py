@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.db.session import SessionLocal
 from app.models.enums import JobRunStatus
 from app.models.observability import JobRun
-from app.models.sources import SourceChannel
+from app.models.sources import Publisher, SourceChannel
 from app.services.ai_enrichment import enrich_recent_articles as enrich_recent_articles_service
 from app.services.article_fetch import backfill_article_images, fetch_article_bodies
 from app.services.epaper import propose_cuttings_for_tenant
@@ -24,8 +24,16 @@ from app.services.matching import match_all_articles_for_tenant, match_article_f
 from app.services.reports import approve_and_render, deliver_version
 from app.services.semantic_matching import run_semantic_matching_for_tenant
 from app.services.social import poll_approved_accounts
+from app.services.source_enablement import enable_web_sources
 from app.services.source_health import list_source_health, probe_channel_health
 from app.workers.celery_app import celery_app
+
+PRIORITY_SOURCE_RECOVERY: tuple[tuple[str, bool], ...] = (
+    ("kuna", False),
+    ("alseyassah", False),
+    ("alwasat", False),
+    ("alwatan", True),
+)
 
 
 @celery_app.task(name="app.workers.tasks.ping_source_health")  # type: ignore[untyped-decorator]
@@ -95,6 +103,41 @@ def fetch_article_bodies_task(
         db.close()
 
 
+@celery_app.task(name="app.workers.tasks.recover_publisher_articles")  # type: ignore[untyped-decorator]
+def recover_publisher_articles(
+    publisher_code: str,
+    limit: int = 150,
+    use_browser_fallback: bool = False,
+) -> dict[str, object]:
+    """Discover and fetch one publisher without blocking the main coverage update."""
+    db = SessionLocal()
+    try:
+        publisher = db.scalar(select(Publisher).where(Publisher.code == publisher_code))
+        if publisher is None:
+            return {"ok": False, "reason": "publisher_not_found", "publisher": publisher_code}
+        channels = db.scalars(
+            select(SourceChannel).where(SourceChannel.publisher_id == publisher.id)
+        ).all()
+        discovery = [discover_channel(db, channel.id) for channel in channels]
+        fetch = fetch_article_bodies(
+            db,
+            lookback_days=5,
+            limit=limit,
+            politeness_delay_ms=300,
+            max_requests_per_minute=60,
+            use_browser_fallback=use_browser_fallback,
+            publisher_codes={publisher_code},
+        )
+        return {
+            "ok": True,
+            "publisher": publisher_code,
+            "discovery": discovery,
+            "fetch": fetch,
+        }
+    finally:
+        db.close()
+
+
 @celery_app.task(name="app.workers.tasks.run_lookback_ingest_task")  # type: ignore[untyped-decorator]
 def run_lookback_ingest_task(
     lookback_days: int = 5,
@@ -134,15 +177,35 @@ def run_public_lookback_ingest(
         job.attempt_count += 1
         db.commit()
 
+        enable_result = enable_web_sources(
+            db,
+            lookback_days=lookback_days,
+            actor_id="public-demo-worker",
+            include_temporarily_broken=True,
+        )
+        for publisher_code, browser_required in PRIORITY_SOURCE_RECOVERY:
+            recover_publisher_articles.apply_async(
+                kwargs={
+                    "publisher_code": publisher_code,
+                    "limit": 150,
+                    "use_browser_fallback": browser_required,
+                },
+                queue="article.fetch",
+            )
+
         result = run_lookback_ingest(
             db,
             lookback_days=lookback_days,
             fetch_limit=fetch_limit,
             actor_id="public-demo-worker",
-            enable_first=True,
+            enable_first=False,
             # Browser-only sources run separately; never let Playwright block the whole demo sync.
             use_browser_fallback=False,
+            excluded_publisher_codes={
+                publisher_code for publisher_code, _ in PRIORITY_SOURCE_RECOVERY
+            },
         )
+        result["enable"] = enable_result
         job = db.get(JobRun, job_uuid)
         if job is None:
             raise ValueError(f"Ingest job {job_id} disappeared")

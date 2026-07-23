@@ -140,10 +140,7 @@ SOURCE_INGEST_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "connector_type": "html",
         "base_url": "https://www.kuna.net.kw",
         "config": {
-            "listing_urls": [
-                "https://www.kuna.net.kw/",
-                "https://www.kuna.net.kw/ArticleList.aspx",
-            ],
+            "listing_urls": ["https://www.kuna.net.kw/Default.aspx?language=ar"],
             "path_regex": r"ArticleDetails\.aspx\?id=\d+",
             "max_urls": 80,
             "transport_fallback": "urllib",
@@ -153,10 +150,7 @@ SOURCE_INGEST_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "connector_type": "html",
         "base_url": "https://www.kuna.net.kw",
         "config": {
-            "listing_urls": [
-                "https://www.kuna.net.kw/",
-                "https://www.kuna.net.kw/ArticleList.aspx",
-            ],
+            "listing_urls": ["https://www.kuna.net.kw/Default.aspx?language=en"],
             "path_regex": r"ArticleDetails\.aspx\?id=\d+",
             "max_urls": 80,
             "transport_fallback": "urllib",

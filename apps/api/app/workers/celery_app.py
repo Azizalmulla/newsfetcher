@@ -52,6 +52,7 @@ celery_app.conf.update(
         "app.workers.tasks.discover_source_channel": {"queue": "source.discovery"},
         "app.workers.tasks.discover_all_enabled_sources": {"queue": "source.discovery"},
         "app.workers.tasks.fetch_article_bodies_task": {"queue": "article.fetch"},
+        "app.workers.tasks.recover_publisher_articles": {"queue": "article.fetch"},
         "app.workers.tasks.run_lookback_ingest_task": {"queue": "source.discovery"},
         "app.workers.tasks.run_public_lookback_ingest": {"queue": "source.discovery"},
         "app.workers.tasks.enrich_recent_article_assets": {"queue": "matching.classify"},

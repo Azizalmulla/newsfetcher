@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.arabic import normalize_text
 from app.models.articles import Article, ArticleImage, ArticleVersion
+from app.models.sources import Publisher
 
 _META_DATE_KEYS = (
     "article:published_time",
@@ -587,16 +588,23 @@ def fetch_article_bodies(
     commit_every: int = 25,
     use_browser_fallback: bool = True,
     refetch_junk: bool = True,
+    publisher_codes: set[str] | None = None,
+    excluded_publisher_codes: set[str] | None = None,
 ) -> dict[str, Any]:
     if refetch_junk:
         invalidate_junk_bodies(db)
 
+    stmt = select(Article)
+    if publisher_codes or excluded_publisher_codes:
+        stmt = stmt.join(Publisher, Publisher.id == Article.publisher_id)
+        if publisher_codes:
+            stmt = stmt.where(Publisher.code.in_(publisher_codes))
+        if excluded_publisher_codes:
+            stmt = stmt.where(Publisher.code.not_in(excluded_publisher_codes))
     stmt = (
-        select(Article)
-        .where(
+        stmt.where(
             or_(
                 Article.body_original.is_(None),
-                # Empty string leftovers
                 Article.body_original == "",
             )
         )
