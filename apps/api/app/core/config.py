@@ -11,6 +11,10 @@ def _to_psycopg_url(url: str) -> str:
         url = "postgresql://" + url[len("postgres://") :]
     if url.startswith("postgresql://") and "+psycopg" not in url.split("://", 1)[0]:
         url = "postgresql+psycopg://" + url[len("postgresql://") :]
+    # Hosted Postgres often requires TLS; skip for local Compose.
+    local_markers = ("localhost", "127.0.0.1", "@postgres:")
+    if not any(marker in url for marker in local_markers) and "sslmode=" not in url:
+        url = f"{url}&sslmode=require" if "?" in url else f"{url}?sslmode=require"
     return url
 
 
