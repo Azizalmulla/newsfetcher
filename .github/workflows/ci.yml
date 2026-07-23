@@ -65,7 +65,7 @@ jobs:
           uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           sleep 2
           curl -sf http://127.0.0.1:8000/health |
-            python -c 'import json,sys; assert json.load(sys.stdin)["phase"] == "0"'
+            python -c 'import json,sys; assert json.load(sys.stdin)["status"] == "ok"'
           curl -sf http://127.0.0.1:8000/api/v1/sources/inventory |
             python -c 'import json,sys; assert json.load(sys.stdin)["publisher_count"] == 10'
 
