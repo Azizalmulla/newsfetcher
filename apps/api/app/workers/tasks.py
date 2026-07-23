@@ -5,14 +5,17 @@ Phase 1: source health probes only. Discovery/fetch require legal_gate + enabled
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
+from app.models.enums import JobRunStatus
+from app.models.observability import JobRun
 from app.models.sources import SourceChannel
-from app.services.epaper import propose_cuttings_for_tenant
 from app.services.article_fetch import fetch_article_bodies
+from app.services.epaper import propose_cuttings_for_tenant
 from app.services.ingestion import discover_channel
 from app.services.ingestion_pipeline import discover_all_enabled, run_lookback_ingest
 from app.services.logos import run_detect_and_propose
@@ -108,6 +111,54 @@ def run_lookback_ingest_task(
             enable_first=enable_first,
             use_browser_fallback=True,
         )
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.workers.tasks.run_public_lookback_ingest")  # type: ignore[untyped-decorator]
+def run_public_lookback_ingest(
+    job_id: str,
+    lookback_days: int = 5,
+    fetch_limit: int = 400,
+) -> dict[str, object]:
+    """Run the public demo ingest and persist truthful job state for the dashboard."""
+    db = SessionLocal()
+    job_uuid = UUID(job_id)
+    try:
+        job = db.get(JobRun, job_uuid)
+        if job is None:
+            raise ValueError(f"Ingest job {job_id} does not exist")
+        job.status = JobRunStatus.running
+        job.started_at = datetime.now(UTC)
+        job.attempt_count += 1
+        db.commit()
+
+        result = run_lookback_ingest(
+            db,
+            lookback_days=lookback_days,
+            fetch_limit=fetch_limit,
+            actor_id="public-demo-worker",
+            enable_first=True,
+            use_browser_fallback=True,
+        )
+        job = db.get(JobRun, job_uuid)
+        if job is None:
+            raise ValueError(f"Ingest job {job_id} disappeared")
+        job.status = JobRunStatus.succeeded
+        job.result = result
+        job.finished_at = datetime.now(UTC)
+        job.error_message = None
+        db.commit()
+        return dict(result)
+    except Exception as exc:
+        db.rollback()
+        job = db.get(JobRun, job_uuid)
+        if job is not None:
+            job.status = JobRunStatus.failed
+            job.error_message = str(exc)[:4000]
+            job.finished_at = datetime.now(UTC)
+            db.commit()
+        raise
     finally:
         db.close()
 

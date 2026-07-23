@@ -44,6 +44,16 @@ type DashboardEdition = {
   publisher_name_ar: string;
 };
 
+type IngestionJob = {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | string;
+  attempt_count: number;
+  error: string | null;
+  created_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
 type DashboardPayload = {
   stats: {
     articles_total: number;
@@ -54,6 +64,7 @@ type DashboardPayload = {
   articles: DashboardArticle[];
   publishers: DashboardPublisher[];
   epaper_editions: DashboardEdition[];
+  ingestion: IngestionJob | null;
   generated_at: string;
 };
 
@@ -190,7 +201,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => void load(), 60_000);
+    const id = window.setInterval(() => void load(), 15_000);
     return () => window.clearInterval(id);
   }, [load]);
 
@@ -204,9 +215,9 @@ export default function DashboardPage() {
         cache: "no-store",
       });
       if (!response.ok) throw new Error(await response.text());
-      const body = (await response.json()) as { message?: string };
+      const body = (await response.json()) as { message?: string; ingestion?: IngestionJob };
       setIngestMsg(body.message ?? "Ingest started.");
-      window.setTimeout(() => void load(), 15_000);
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ingest failed to start");
     } finally {
@@ -215,6 +226,16 @@ export default function DashboardPage() {
   }
 
   const stats = data?.stats;
+  const ingestion = data?.ingestion;
+  const ingestActive = ingestion?.status === "queued" || ingestion?.status === "running";
+  const jobMessage =
+    ingestion?.status === "queued"
+      ? "Ingest queued — waiting for the background worker."
+      : ingestion?.status === "running"
+        ? `Ingest running · attempt ${ingestion.attempt_count}`
+        : ingestion?.status === "failed"
+          ? `Ingest failed: ${ingestion.error ?? "unknown worker error"}`
+          : null;
   const updatedAt = data?.generated_at
     ? new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(
         new Date(data.generated_at),
@@ -299,19 +320,29 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => void startIngest()}
-              disabled={busy}
+              disabled={busy || ingestActive}
               className={`${styles.button} ${styles.buttonPrimary}`}
             >
               <Icon name="download" size={16} />
-              {busy ? "Starting…" : "Ingest last 5 days"}
+              {busy
+                ? "Queuing…"
+                : ingestion?.status === "queued"
+                  ? "Queued"
+                  : ingestion?.status === "running"
+                    ? "Ingesting…"
+                    : "Ingest last 5 days"}
             </button>
           </div>
         </section>
 
-        {ingestMsg ? (
-          <div className={styles.notice}>
-            <Icon name="check" size={16} />
-            {ingestMsg}
+        {jobMessage || ingestMsg ? (
+          <div
+            className={`${styles.notice} ${
+              ingestion?.status === "failed" ? styles.error : ""
+            }`}
+          >
+            {ingestion?.status === "failed" ? <span>!</span> : <Icon name="check" size={16} />}
+            {jobMessage ?? ingestMsg}
           </div>
         ) : null}
         {error ? (

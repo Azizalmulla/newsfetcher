@@ -10,8 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.models.articles import Article
 from app.models.epaper import EpaperEdition
+from app.models.observability import JobRun
 from app.models.sources import Publisher, SourceChannel
-from app.services.ingestion_pipeline import DEFAULT_LOOKBACK_DAYS, article_stats
+from app.services.ingestion_pipeline import article_stats
+from app.services.source_enablement import DEFAULT_LOOKBACK_DAYS
+
+INGEST_TASK_NAME = "ingestion.lookback.public"
 
 
 def _snippet(text: str | None, *, limit: int = 220) -> str | None:
@@ -23,7 +27,12 @@ def _snippet(text: str | None, *, limit: int = 220) -> str | None:
     return cleaned[: limit - 1].rstrip() + "…"
 
 
-def build_dashboard(db: Session, *, lookback_days: int = DEFAULT_LOOKBACK_DAYS, limit: int = 40) -> dict[str, Any]:
+def build_dashboard(
+    db: Session,
+    *,
+    lookback_days: int = DEFAULT_LOOKBACK_DAYS,
+    limit: int = 40,
+) -> dict[str, Any]:
     stats = article_stats(db, lookback_days=lookback_days)
     cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
 
@@ -126,10 +135,54 @@ def build_dashboard(db: Session, *, lookback_days: int = DEFAULT_LOOKBACK_DAYS, 
         for row in edition_rows
     ]
 
+    latest_ingest = db.scalar(
+        select(JobRun)
+        .where(JobRun.task_name == INGEST_TASK_NAME)
+        .order_by(JobRun.created_at.desc())
+        .limit(1)
+    )
+    ingestion = None
+    if latest_ingest is not None:
+        result = latest_ingest.result or {}
+        ingestion = {
+            "id": str(latest_ingest.id),
+            "status": str(getattr(latest_ingest.status, "value", latest_ingest.status)),
+            "attempt_count": latest_ingest.attempt_count,
+            "error": latest_ingest.error_message,
+            "created_at": (
+                latest_ingest.created_at.isoformat() if latest_ingest.created_at else None
+            ),
+            "started_at": (
+                latest_ingest.started_at.isoformat() if latest_ingest.started_at else None
+            ),
+            "finished_at": (
+                latest_ingest.finished_at.isoformat() if latest_ingest.finished_at else None
+            ),
+            "result_summary": {
+                "stats": result.get("stats"),
+                "discovery": {
+                    key: (result.get("discovery") or {}).get(key)
+                    for key in (
+                        "channels_attempted",
+                        "channels_ok",
+                        "discovered_total",
+                        "created_or_updated_total",
+                    )
+                },
+                "fetch": {
+                    key: (result.get("fetch") or {}).get(key)
+                    for key in ("fetched", "error_count", "stale_dropped")
+                },
+            }
+            if result
+            else None,
+        }
+
     return {
         "stats": stats,
         "articles": articles,
         "publishers": publishers,
         "epaper_editions": epaper_editions,
+        "ingestion": ingestion,
         "generated_at": datetime.now(UTC).isoformat(),
     }
