@@ -5,12 +5,24 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from app.services.article_fetch import (
+    _source_request_url,
     body_quality_ok,
     extract_alqabas_api_article,
     extract_article_content,
     is_junk_body,
 )
 from app.services.ingestion import normalize_url
+
+
+def test_kuna_requests_use_configured_source_proxy(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    settings = MagicMock(source_proxy_base_url="https://dashboard.test/api/kuna")
+    monkeypatch.setattr("app.services.article_fetch.get_settings", lambda: settings)
+    proxied = _source_request_url(
+        "https://www.kuna.net.kw/ArticleDetails.aspx?id=3317599&Language=en"
+    )
+    assert proxied.startswith("https://dashboard.test/api/kuna?url=")
+    assert "%2FArticleDetails.aspx%3Fid%3D3317599" in proxied
+    assert _source_request_url("https://example.com/story") == "https://example.com/story"
 
 
 def test_extract_article_content_reads_title_body_and_date() -> None:

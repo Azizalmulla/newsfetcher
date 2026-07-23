@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from typing import Any
-from urllib.parse import quote, unquote, urljoin, urlparse, urlunparse
+from urllib.parse import quote, unquote, urlencode, urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -63,7 +63,11 @@ class HtmlConnector(SourceConnector):
                     break
                 meta["pages_tried"].append(listing_url)  # type: ignore[index]
                 try:
-                    response = client.get(listing_url)
+                    request_url = self._request_url(
+                        listing_url,
+                        proxy_base_url=context.config.get("proxy_base_url"),
+                    )
+                    response = client.get(request_url)
                     if response.status_code >= 400:
                         errors.append(f"{listing_url} -> HTTP {response.status_code}")
                         continue
@@ -236,6 +240,12 @@ class HtmlConnector(SourceConnector):
     def _normalize_url(url: str) -> str:
         parts = urlparse(url)
         return urlunparse((parts.scheme, parts.netloc, parts.path, "", parts.query, ""))
+
+    @staticmethod
+    def _request_url(url: str, *, proxy_base_url: str | None) -> str:
+        if not proxy_base_url:
+            return url
+        return f"{proxy_base_url.rstrip('/')}?{urlencode({'url': url})}"
 
     @staticmethod
     def _same_site(

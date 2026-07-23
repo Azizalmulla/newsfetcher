@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.config import get_settings
 from app.models.enums import ConnectorMethod, LegalGate
 from app.models.sources import Publisher, SourceChannel
 from app.services.audit import write_audit
@@ -167,6 +168,7 @@ def enable_web_sources(
     include_temporarily_broken: bool = True,
 ) -> dict[str, Any]:
     """Approve legal_gate + enable connectors for web channels (explicit ops action)."""
+    settings = get_settings()
     publishers = db.scalars(
         select(Publisher)
         .options(
@@ -266,6 +268,8 @@ def enable_web_sources(
             config["max_urls"] = int(config.get("max_urls") or DEFAULT_MAX_URLS)
             config["ingestion_enabled"] = True
             config["requires_legal_gate"] = True
+            if publisher.code == "kuna" and settings.source_proxy_base_url:
+                config["proxy_base_url"] = settings.source_proxy_base_url
             if connector.connector_type == ConnectorMethod.epaper or (
                 override and override.get("connector_type") == "epaper"
             ):

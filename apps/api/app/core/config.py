@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # Public no-auth dashboard + one-click demo ingest (turn off when multi-tenant SaaS hardens).
     demo_public_dashboard: bool = True
     demo_public_ingest: bool = True
+    source_proxy_base_url: str = ""
 
     database_url: str = (
         "postgresql+psycopg://newsfetcher:newsfetcher_dev_password@localhost:5433/newsfetcher"

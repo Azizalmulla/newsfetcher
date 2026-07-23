@@ -8,7 +8,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from html import unescape
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from newsfetcher_connectors.politeness import PoliteHttpClient
@@ -16,6 +16,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.arabic import normalize_text
+from app.core.config import get_settings
 from app.models.articles import Article, ArticleImage, ArticleVersion
 from app.models.sources import Publisher
 
@@ -578,6 +579,14 @@ def _should_replace_body(existing: str | None, new_body: str) -> bool:
     return False
 
 
+def _source_request_url(source_url: str) -> str:
+    host = urlparse(source_url).netloc.lower().removeprefix("www.")
+    proxy_base_url = get_settings().source_proxy_base_url
+    if host == "kuna.net.kw" and proxy_base_url:
+        return f"{proxy_base_url.rstrip('/')}?{urlencode({'url': source_url})}"
+    return source_url
+
+
 def fetch_article_bodies(
     db: Session,
     *,
@@ -669,7 +678,7 @@ def fetch_article_bodies(
                     parsed = extract_alqabas_api_article(article_id, client)
                     api_fetches += 1
                 else:
-                    response = client.get(source_url)
+                    response = client.get(_source_request_url(source_url))
                     if response.status_code >= 400:
                         errors.append(f"{source_url} -> HTTP {response.status_code}")
                         continue
@@ -868,7 +877,7 @@ def backfill_article_images(
                         continue
                     parsed = extract_alqabas_api_article(article_id, client)
                 else:
-                    response = client.get(source_url)
+                    response = client.get(_source_request_url(source_url))
                     if response.status_code >= 400:
                         continue
                     parsed = extract_article_content(response.content, url=source_url)
@@ -954,7 +963,7 @@ def backfill_missing_dates(
                     parsed = extract_alqabas_api_article(article_id, client)
                 else:
                     # Prefer static HTML first; browser only when date still missing.
-                    response = client.get(source_url)
+                    response = client.get(_source_request_url(source_url))
                     if response.status_code >= 400:
                         errors.append(f"{source_url} -> HTTP {response.status_code}")
                         still_unknown += 1

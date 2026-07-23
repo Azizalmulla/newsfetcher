@@ -53,3 +53,12 @@ def test_html_connector_parses_next_data_articles(monkeypatch) -> None:  # type:
     urls = {item.source_url for item in result.items}
     assert any("/article/123/" in url for url in urls)
     assert result.meta["next_data_items"] >= 1
+
+
+def test_html_connector_builds_restricted_proxy_request_url() -> None:
+    proxied = HtmlConnector._request_url(
+        "https://www.kuna.net.kw/Default.aspx?language=ar",
+        proxy_base_url="https://dashboard.test/api/kuna",
+    )
+    assert proxied.startswith("https://dashboard.test/api/kuna?url=")
+    assert "%2FDefault.aspx%3Flanguage%3Dar" in proxied
