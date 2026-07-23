@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "NewsFetcher",
-  description: "Kuwait media-monitoring SaaS — Phase 0 baseline",
+  description: "Kuwait media intelligence — live article and e-paper desk",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

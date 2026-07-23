@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: str = "http://localhost:3000"
+    # Public no-auth dashboard + one-click demo ingest (turn off when multi-tenant SaaS hardens).
+    demo_public_dashboard: bool = True
+    demo_public_ingest: bool = True
 
     database_url: str = (
         "postgresql+psycopg://newsfetcher:newsfetcher_dev_password@localhost:5433/newsfetcher"

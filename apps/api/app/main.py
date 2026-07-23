@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     auth,
+    dashboard,
     entities,
     epaper,
     health,
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     init_otel(app, settings)
 
     app.include_router(health.router)
+    app.include_router(dashboard.router, prefix="/api/v1")
     app.include_router(sources.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(entities.router, prefix="/api/v1")
